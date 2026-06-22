@@ -1,0 +1,1069 @@
+# API_SPEC.md
+
+## 0. 공통 규칙
+
+### 공통 성공 응답
+
+모든 REST API는 가능하면 아래 응답 구조를 따른다.
+
+```json
+{
+  "success": true,
+  "message": "요청이 성공했습니다.",
+  "data": {}
+}
+```
+
+### 공통 에러 응답
+
+```json
+{
+  "success": false,
+  "code": "ERROR_CODE",
+  "message": "에러 메시지"
+}
+```
+
+### 인증 헤더
+
+인증이 필요한 API는 아래 Header를 사용한다.
+
+| Key | Value | 설명 |
+|---|---|---|
+| Authorization | Bearer {accessToken} | JWT Access Token |
+
+### 주요 Enum
+
+#### ProductStatus
+
+```text
+ON_SALE
+RESERVED
+SOLD
+DELETED
+```
+
+#### ProductCategory
+
+```text
+DIGITAL
+FURNITURE
+CLOTHING
+BOOK
+SPORTS
+KIDS
+BEAUTY
+FOOD
+PET
+ETC
+```
+
+#### ChatRoomType
+
+```text
+TRADE
+CS
+```
+
+#### CsStatus
+
+```text
+WAITING
+IN_PROGRESS
+COMPLETED
+```
+
+---
+
+# 1. 인증 / 회원 API
+
+## 1-1. 회원가입
+
+- Method: `POST`
+- Path: `/api/auth/signup`
+- Auth: 불필요
+
+### Request
+
+```json
+{
+  "email": "test@example.com",
+  "password": "Password123!",
+  "nickname": "현승"
+}
+```
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "회원가입이 완료되었습니다.",
+  "data": {
+    "memberId": 1,
+    "email": "test@example.com",
+    "nickname": "현승"
+  }
+}
+```
+
+### Error
+
+| Status | Code | 설명 |
+|---|---|---|
+| 409 | DUPLICATED_EMAIL | 이미 사용 중인 이메일 |
+| 409 | DUPLICATED_NICKNAME | 이미 사용 중인 닉네임 |
+| 400 | INVALID_REQUEST | 요청 값 검증 실패 |
+
+---
+
+## 1-2. 로그인
+
+- Method: `POST`
+- Path: `/api/auth/login`
+- Auth: 불필요
+
+### Request
+
+```json
+{
+  "email": "test@example.com",
+  "password": "Password123!"
+}
+```
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "로그인에 성공했습니다.",
+  "data": {
+    "accessToken": "access-token",
+    "refreshToken": "refresh-token",
+    "tokenType": "Bearer"
+  }
+}
+```
+
+### Error
+
+| Status | Code | 설명 |
+|---|---|---|
+| 401 | INVALID_LOGIN | 이메일 또는 비밀번호 불일치 |
+| 400 | INVALID_REQUEST | 요청 값 검증 실패 |
+
+---
+
+## 1-3. 로그아웃
+
+- Method: `POST`
+- Path: `/api/auth/logout`
+- Auth: 필요
+
+### 처리 정책
+
+- 요청 Header의 Access Token을 추출한다.
+- Access Token의 남은 만료 시간을 계산한다.
+- Redis Blacklist에 Access Token을 저장한다.
+- Redis Blacklist TTL은 Access Token의 남은 만료 시간으로 설정한다.
+- Redis에 저장된 Refresh Token을 삭제한다.
+- 이후 Blacklist에 존재하는 Access Token으로 요청하면 401을 반환한다.
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "로그아웃이 완료되었습니다.",
+  "data": null
+}
+```
+
+### Error
+
+| Status | Code | 설명 |
+|---|---|---|
+| 401 | UNAUTHORIZED | 인증되지 않은 사용자 |
+| 401 | EXPIRED_TOKEN | 만료된 Access Token |
+| 401 | BLACKLIST_TOKEN | 이미 로그아웃된 토큰 |
+
+---
+
+## 1-4. 토큰 재발급
+
+- Method: `POST`
+- Path: `/api/auth/reissue`
+- Auth: 불필요
+
+### Request
+
+```json
+{
+  "refreshToken": "refresh-token"
+}
+```
+
+### 처리 정책
+
+- Refresh Token 자체의 유효성을 검증한다.
+- Redis에 저장된 Refresh Token과 요청 Refresh Token을 비교한다.
+- 일치하면 새로운 Access Token을 발급한다.
+- Refresh Token이 만료되었거나 Redis에 없으면 재로그인이 필요하다.
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "토큰이 재발급되었습니다.",
+  "data": {
+    "accessToken": "new-access-token",
+    "tokenType": "Bearer"
+  }
+}
+```
+
+### Error
+
+| Status | Code | 설명 |
+|---|---|---|
+| 401 | INVALID_REFRESH_TOKEN | 유효하지 않은 Refresh Token |
+| 401 | EXPIRED_REFRESH_TOKEN | 만료된 Refresh Token |
+
+---
+
+## 1-5. 내 정보 조회
+
+- Method: `GET`
+- Path: `/api/members/me`
+- Auth: 필요
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "내 정보 조회에 성공했습니다.",
+  "data": {
+    "memberId": 1,
+    "email": "test@example.com",
+    "nickname": "현승"
+  }
+}
+```
+
+### Error
+
+| Status | Code | 설명 |
+|---|---|---|
+| 401 | UNAUTHORIZED | 인증되지 않은 사용자 |
+| 404 | MEMBER_NOT_FOUND | 회원을 찾을 수 없음 |
+
+---
+
+## 1-6. 내 정보 수정
+
+- Method: `PATCH`
+- Path: `/api/members/me`
+- Auth: 필요
+
+### Request
+
+```json
+{
+  "nickname": "새닉네임"
+}
+```
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "내 정보가 수정되었습니다.",
+  "data": {
+    "memberId": 1,
+    "nickname": "새닉네임"
+  }
+}
+```
+
+### Error
+
+| Status | Code | 설명 |
+|---|---|---|
+| 401 | UNAUTHORIZED | 인증되지 않은 사용자 |
+| 400 | INVALID_REQUEST | 요청 값 검증 실패 |
+| 409 | DUPLICATED_NICKNAME | 이미 사용 중인 닉네임 |
+
+---
+
+## 1-7. 마이페이지 조회
+
+- Method: `GET`
+- Path: `/api/mypage`
+- Auth: 필요
+
+### 설명
+
+마이페이지 첫 화면에 필요한 요약 정보를 조회한다.  
+목록 상세 데이터는 각 도메인 API가 담당한다.
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "마이페이지 조회에 성공했습니다.",
+  "data": {
+    "memberId": 1,
+    "nickname": "현승",
+    "sellingProductCount": 3,
+    "wishedProductCount": 5,
+    "chatRoomCount": 2,
+    "couponCount": 1
+  }
+}
+```
+
+---
+
+# 2. 상품 API
+
+## 2-1. 상품 등록
+
+- Method: `POST`
+- Path: `/api/products`
+- Auth: 필요
+
+### Request
+
+```json
+{
+  "title": "MacBook Pro 14인치",
+  "price": 2500000,
+  "description": "2023년 구매, 상태 매우 좋음",
+  "category": "DIGITAL",
+  "images": [
+    "https://cdn.example.com/images/product1.jpg",
+    "https://cdn.example.com/images/product2.jpg"
+  ]
+}
+```
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "상품 등록에 성공했습니다.",
+  "data": {
+    "productId": 1,
+    "sellerId": 42,
+    "title": "MacBook Pro 14인치",
+    "price": 2500000,
+    "description": "2023년 구매, 상태 매우 좋음",
+    "category": "DIGITAL",
+    "status": "ON_SALE",
+    "imageUrls": [
+      "https://cdn.example.com/images/product1.jpg",
+      "https://cdn.example.com/images/product2.jpg"
+    ],
+    "createdAt": "2026-06-22T10:00:00",
+    "updatedAt": "2026-06-22T10:00:00"
+  }
+}
+```
+
+### Error
+
+| Status | Code | 설명 |
+|---|---|---|
+| 400 | INVALID_CATEGORY | 유효하지 않은 카테고리 |
+| 400 | INVALID_PRICE | 가격은 0 이상이어야 함 |
+| 401 | UNAUTHORIZED | 인증되지 않은 사용자 |
+
+---
+
+## 2-2. 상품 목록 조회
+
+- Method: `GET`
+- Path: `/api/products`
+- Auth: 불필요
+
+### Query Parameters
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| category | String | N | 카테고리 필터 |
+| keyword | String | N | 상품 제목 검색 키워드 |
+| sellerId | Long | N | 특정 판매자의 상품 필터 |
+| status | String | N | 판매 상태 필터, 기본값 ON_SALE |
+| page | Integer | N | 기본값 0 |
+| size | Integer | N | 기본값 20 |
+| sort | String | N | 예: createdAt,desc |
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "상품 목록 조회에 성공했습니다.",
+  "data": {
+    "content": [
+      {
+        "productId": 1,
+        "sellerId": 42,
+        "title": "MacBook Pro 14인치",
+        "price": 2500000,
+        "category": "DIGITAL",
+        "status": "ON_SALE",
+        "thumbnailUrl": "https://cdn.example.com/images/product1.jpg",
+        "createdAt": "2026-06-22T10:00:00"
+      }
+    ],
+    "page": 0,
+    "size": 20,
+    "totalElements": 1,
+    "totalPages": 1
+  }
+}
+```
+
+---
+
+## 2-3. 상품 상세 조회
+
+- Method: `GET`
+- Path: `/api/products/{productId}`
+- Auth: 선택
+
+### 설명
+
+로그인 사용자의 경우 관심상품 등록 여부를 `wished`로 함께 반환한다.  
+비로그인 사용자는 `wished = false`로 반환한다.
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "상품 상세 조회에 성공했습니다.",
+  "data": {
+    "productId": 1,
+    "title": "아이폰 15 팝니다",
+    "price": 800000,
+    "description": "상태 좋습니다.",
+    "category": "DIGITAL",
+    "status": "ON_SALE",
+    "sellerId": 3,
+    "sellerNickname": "판매자A",
+    "imageUrls": [
+      "https://image-url.com/1.png",
+      "https://image-url.com/2.png"
+    ],
+    "wished": true,
+    "createdAt": "2026-06-23T10:00:00",
+    "updatedAt": "2026-06-23T10:00:00"
+  }
+}
+```
+
+### Error
+
+| Status | Code | 설명 |
+|---|---|---|
+| 404 | PRODUCT_NOT_FOUND | 상품을 찾을 수 없음 |
+
+---
+
+## 2-4. 상품 정보 수정
+
+- Method: `PATCH`
+- Path: `/api/products/{productId}`
+- Auth: 필요
+
+### Request
+
+```json
+{
+  "title": "MacBook Pro 14인치 (수정)",
+  "price": 2300000,
+  "description": "가격 인하합니다",
+  "category": "DIGITAL",
+  "images": [
+    "https://cdn.example.com/images/new1.jpg"
+  ]
+}
+```
+
+### Error
+
+| Status | Code | 설명 |
+|---|---|---|
+| 400 | INVALID_CATEGORY | 유효하지 않은 카테고리 |
+| 400 | CANNOT_MODIFY_SOLD_PRODUCT | SOLD 상태 상품 수정 불가 |
+| 401 | UNAUTHORIZED | 인증되지 않은 사용자 |
+| 403 | FORBIDDEN | 본인 상품이 아님 |
+| 404 | PRODUCT_NOT_FOUND | 상품을 찾을 수 없음 |
+
+---
+
+## 2-5. 상품 삭제
+
+- Method: `DELETE`
+- Path: `/api/products/{productId}`
+- Auth: 필요
+
+### 처리 정책
+
+- 물리 삭제가 아니라 상태를 `DELETED`로 변경하는 소프트 삭제를 우선한다.
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "상품이 삭제되었습니다.",
+  "data": null
+}
+```
+
+---
+
+## 2-6. 내 판매 상품 목록 조회
+
+- Method: `GET`
+- Path: `/api/products/me`
+- Auth: 필요
+
+### Query Parameters
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| status | String | N | ON_SALE / RESERVED / SOLD |
+| page | Integer | N | 기본값 0 |
+| size | Integer | N | 기본값 20 |
+
+---
+
+## 2-7. 판매자 프로필 조회
+
+- Method: `GET`
+- Path: `/api/members/{memberId}/profile`
+- Auth: 불필요
+
+### 주의
+
+프로필 이미지는 Member ERD의 `profile_image`를 사용한다.
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "판매자 프로필 조회에 성공했습니다.",
+  "data": {
+    "memberId": 42,
+    "nickname": "판매왕",
+    "profileImage": "https://cdn.example.com/profiles/member42.jpg",
+    "productCount": 5
+  }
+}
+```
+
+판매자의 상품 목록은 `GET /api/products?sellerId={memberId}`로 페이징하여 조회한다.
+
+---
+
+## 2-8. 상품 상태 변경
+
+- Method: `PATCH`
+- Path: `/api/products/{productId}/status`
+- Auth: 필요
+
+### Request
+
+```json
+{
+  "status": "RESERVED"
+}
+```
+
+### 상태 전이 정책
+
+- `ON_SALE -> RESERVED`
+- `ON_SALE -> SOLD`
+- `RESERVED -> SOLD`
+- `RESERVED -> ON_SALE`은 예약 취소 API 사용
+- `SOLD -> ON_SALE`, `SOLD -> RESERVED` 불가
+
+### Error
+
+| Status | Code | 설명 |
+|---|---|---|
+| 400 | INVALID_STATUS | 유효하지 않은 상태 |
+| 400 | INVALID_STATUS_TRANSITION | 허용되지 않는 상태 전이 |
+| 401 | UNAUTHORIZED | 인증되지 않은 사용자 |
+| 403 | FORBIDDEN | 본인 상품이 아님 |
+| 404 | PRODUCT_NOT_FOUND | 상품을 찾을 수 없음 |
+
+---
+
+## 2-9. 예약 취소
+
+- Method: `PATCH`
+- Path: `/api/products/{productId}/status/cancel-reservation`
+- Auth: 필요
+
+### 처리 정책
+
+- `RESERVED` 상태인 상품만 `ON_SALE`로 변경할 수 있다.
+
+---
+
+# 3. 쿠폰 API
+
+## 3-1. 이벤트 쿠폰 목록 조회
+
+- Method: `GET`
+- Path: `/api/coupons`
+- Auth: 불필요
+
+### Query Parameters
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| page | Integer | N | 기본값 0 |
+| size | Integer | N | 기본값 20 |
+
+---
+
+## 3-2. 선착순 쿠폰 발급
+
+- Method: `POST`
+- Path: `/api/coupons/{couponId}/issue`
+- Auth: 필요
+
+### 처리 정책
+
+- Redis Lock을 이용해 쿠폰별 발급 경쟁을 제어한다.
+- Lock Key 예시: `lock:coupon:{couponId}`
+- 발급 조건: 이벤트 기간, 잔여 수량, 중복 발급 여부
+- 성공 시 `user_coupon` 저장 및 쿠폰 잔여 수량 차감
+- 실패 또는 성공 후 Lock을 해제한다.
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "쿠폰 발급에 성공했습니다.",
+  "data": {
+    "userCouponId": 55,
+    "couponId": 1,
+    "couponName": "신규가입 환영 쿠폰",
+    "code": "WELCOME-A3F9K2",
+    "issuedAt": "2026-06-22T14:00:00",
+    "expireAt": "2026-07-31T23:59:59",
+    "usedAt": null
+  }
+}
+```
+
+### Error
+
+| Status | Code | 설명 |
+|---|---|---|
+| 401 | UNAUTHORIZED | 인증되지 않은 사용자 |
+| 404 | COUPON_NOT_FOUND | 쿠폰을 찾을 수 없음 |
+| 409 | COUPON_ALREADY_ISSUED | 이미 발급받은 쿠폰 |
+| 410 | COUPON_OUT_OF_STOCK | 쿠폰 수량 소진 |
+| 422 | COUPON_EVENT_NOT_STARTED | 이벤트 시작 전 |
+| 422 | COUPON_EVENT_ENDED | 이벤트 종료 |
+
+---
+
+## 3-3. 내 쿠폰 목록 조회
+
+- Method: `GET`
+- Path: `/api/members/me/coupons`
+- Auth: 필요
+
+### Query Parameters
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| used | Boolean | N | true: 사용완료, false: 미사용, 생략: 전체 |
+| page | Integer | N | 기본값 0 |
+| size | Integer | N | 기본값 20 |
+
+---
+
+## 3-4. 쿠폰 사용 처리
+
+- Method: `PATCH`
+- Path: `/api/user-coupons/{userCouponId}/use`
+- Auth: 필요
+
+### Error
+
+| Status | Code | 설명 |
+|---|---|---|
+| 401 | UNAUTHORIZED | 인증되지 않은 사용자 |
+| 403 | FORBIDDEN | 본인 쿠폰이 아님 |
+| 404 | USER_COUPON_NOT_FOUND | 유저 쿠폰을 찾을 수 없음 |
+| 409 | COUPON_ALREADY_USED | 이미 사용된 쿠폰 |
+| 422 | COUPON_EXPIRED | 만료된 쿠폰 |
+
+---
+
+# 4. 검색 / 인기검색어 API
+
+## 4-1. 상품 검색 v1
+
+- Method: `GET`
+- Path: `/api/v1/products/search`
+- Auth: 선택
+- Cache: 없음
+
+### Query Parameters
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| keyword | String | N | 검색 키워드 |
+| category | String | N | 상품 카테고리 |
+| sort | String | N | latest / price_asc / price_desc |
+| page | Integer | N | 기본값 0 |
+| size | Integer | N | 기본값 10 |
+
+### 처리 정책
+
+- 상품명 또는 설명 컬럼에 `LIKE` 검색을 수행한다.
+- 로그인 사용자가 keyword로 검색하면 `search_log`에 저장한다.
+
+---
+
+## 4-2. 상품 검색 v2
+
+- Method: `GET`
+- Path: `/api/v2/products/search`
+- Auth: 선택
+- Cache: Caffeine Local Memory Cache
+
+### 처리 정책
+
+- v1과 동일한 검색 결과를 반환한다.
+- 동일한 검색 조건의 반복 요청은 Local Cache에서 응답한다.
+- 캐시 Key는 keyword, category, sort, page, size를 포함해야 한다.
+- 상품 수정/삭제 시 캐시 무효화 전략을 고려한다.
+
+---
+
+## 4-3. 인기검색어 Top N 조회
+
+- Method: `GET`
+- Path: `/api/search/popular`
+- Auth: 불필요
+
+### Query Parameters
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| limit | Integer | N | 기본값 10 |
+
+### 처리 정책
+
+- 검색어별 검색 횟수가 많은 순으로 반환한다.
+- Redis ZSet 사용 시 `ZINCRBY`, `ZREVRANGE`를 활용한다.
+
+---
+
+## 4-4. 최근 검색어 조회
+
+- Method: `GET`
+- Path: `/api/search/recent`
+- Auth: 필요
+
+### Query Parameters
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| limit | Integer | N | 기본값 10 |
+
+---
+
+## 4-5. 최근 검색어 삭제
+
+- Method: `DELETE`
+- Path: `/api/search/recent/{searchLogId}`
+- Auth: 필요
+
+---
+
+# 5. 관심상품 API
+
+## 5-1. 관심상품 등록
+
+- Method: `POST`
+- Path: `/api/products/{productId}/wishes`
+- Auth: 필요
+
+### 처리 정책
+
+- `member_id + product_id` 조합은 중복 저장될 수 없다.
+- DB Unique 제약 권장: `UNIQUE(member_id, product_id)`
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "관심상품으로 등록되었습니다.",
+  "data": {
+    "productId": 1,
+    "wished": true
+  }
+}
+```
+
+---
+
+## 5-2. 관심상품 취소
+
+- Method: `DELETE`
+- Path: `/api/products/{productId}/wishes`
+- Auth: 필요
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "관심상품이 취소되었습니다.",
+  "data": {
+    "productId": 1,
+    "wished": false
+  }
+}
+```
+
+---
+
+## 5-3. 관심상품 목록 조회
+
+- Method: `GET`
+- Path: `/api/members/me/wishes`
+- Auth: 필요
+
+---
+
+# 6. 채팅 API
+
+## 6-1. 거래 채팅방 생성 또는 조회
+
+- Method: `POST`
+- Path: `/api/chat/rooms/trade`
+- Auth: 필요
+
+### Request
+
+```json
+{
+  "productId": 1
+}
+```
+
+### 처리 정책
+
+- 기존 채팅방이 있으면 기존 roomId를 반환한다.
+- 기존 채팅방이 없으면 새 채팅방을 생성한다.
+- 본인 상품에는 거래 채팅을 시작할 수 없다.
+- 판매완료 상품에는 거래 채팅을 시작할 수 없다.
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "채팅방 생성 성공",
+  "data": {
+    "roomId": 42,
+    "type": "TRADE",
+    "isNew": true,
+    "product": {
+      "id": 1,
+      "title": "자전거 팝니다",
+      "price": 120000,
+      "thumbnailUrl": "https://..."
+    },
+    "counterpart": {
+      "memberId": 2,
+      "nickname": "판매자Kim"
+    },
+    "createdAt": "2026-06-22T10:00:00"
+  }
+}
+```
+
+---
+
+## 6-2. CS 채팅방 생성
+
+- Method: `POST`
+- Path: `/api/chat/rooms/cs`
+- Auth: 필요
+
+### Request
+
+```json
+{
+  "title": "결제 오류 문의"
+}
+```
+
+### 처리 정책
+
+- 항상 새 채팅방을 생성한다.
+- 생성 시 `csStatus = WAITING`으로 설정한다.
+
+---
+
+## 6-3. 채팅방 목록 조회
+
+- Method: `GET`
+- Path: `/api/chat/rooms`
+- Auth: 필요
+
+### Query Parameters
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| type | String | N | TRADE / CS |
+| page | Integer | N | 기본값 0 |
+| size | Integer | N | 기본값 10 |
+
+---
+
+## 6-4. 채팅방 상세 조회
+
+- Method: `GET`
+- Path: `/api/chat/rooms/{roomId}`
+- Auth: 필요
+
+### 처리 정책
+
+- 채팅방 참여자만 조회 가능하다.
+- `type = TRADE`이면 상품 정보와 상대방 정보를 반환한다.
+- `type = CS`이면 문의 제목, 문의 상태, 상대방 정보를 반환한다.
+- Member ERD에 프로필 이미지가 없다면 `profileImage`는 반환하지 않는다.
+
+---
+
+## 6-5. 메시지 목록 조회
+
+- Method: `GET`
+- Path: `/api/chat/rooms/{roomId}/messages`
+- Auth: 필요
+
+### Query Parameters
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| lastMessageId | Long | N | 커서 기준 메시지 ID. 없으면 최신 메시지 조회 |
+| size | Integer | N | 기본값 20 |
+
+### 처리 정책
+
+- 커서 기반 페이징을 사용한다.
+- 처음 입장 시 최신 N개를 반환한다.
+- 스크롤 위로 올릴 때 `lastMessageId` 기준으로 이전 메시지를 조회한다.
+- 응답은 클라이언트 렌더링 편의를 위해 시간 오름차순으로 정렬할 수 있다.
+
+---
+
+## 6-6. 메시지 읽음 처리
+
+- Method: `PATCH`
+- Path: `/api/chat/rooms/{roomId}/read`
+- Auth: 필요
+
+### Request
+
+```json
+{
+  "lastReadMessageId": 990
+}
+```
+
+### 처리 정책
+
+- 채팅방 참여자만 처리할 수 있다.
+- 요청 사용자의 `chat_member.last_read_message_id`를 갱신한다.
+- memberId는 Request Body에서 받지 않고 인증 Principal에서 가져온다.
+
+---
+
+## 6-7. CS 채팅 상태 변경
+
+- Method: `PATCH`
+- Path: `/api/admin/chat/rooms/{roomId}/cs-status`
+- Auth: 필요
+
+### Request
+
+```json
+{
+  "status": "IN_PROGRESS"
+}
+```
+
+### 상태 전이 정책
+
+- `WAITING -> IN_PROGRESS`
+- `IN_PROGRESS -> COMPLETED`
+- `COMPLETED -> WAITING` 불가
+
+---
+
+## 6-8. STOMP 메시지 송신
+
+- Protocol: `WebSocket + STOMP`
+- Send Destination: `/pub/chat/rooms/{roomId}/messages`
+- Subscribe Destination: `/sub/chat/rooms/{roomId}`
+
+### CONNECT 인증
+
+- STOMP CONNECT 시점에 `Authorization: Bearer {accessToken}`을 전달한다.
+- `ChannelInterceptor`에서 JWT를 검증한다.
+- 인증된 사용자를 `Principal`로 설정한다.
+- 메시지 송신 시 클라이언트가 senderId를 보내지 않는다.
+- 서버가 Principal에서 senderId를 식별한다.
+
+### Message Request
+
+```json
+{
+  "content": "직거래 가능한가요?"
+}
+```
+
+### Message Response
+
+```json
+{
+  "messageId": 990,
+  "roomId": 42,
+  "senderId": 1,
+  "senderNickname": "박동네",
+  "content": "직거래 가능한가요?",
+  "createdAt": "2026-06-22T10:42:00"
+}
+```
+
+### 처리 정책
+
+- 메시지는 DB에 저장한다.
+- 단일 서버는 STOMP broker로 전달한다.
+- 다중 서버 확장 시 Redis Pub/Sub을 사용한다.
