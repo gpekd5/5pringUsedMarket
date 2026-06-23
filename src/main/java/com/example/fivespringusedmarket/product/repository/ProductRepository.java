@@ -5,6 +5,7 @@ import com.example.fivespringusedmarket.product.entity.ProductCategory;
 import com.example.fivespringusedmarket.product.entity.ProductStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -24,6 +25,19 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             @Param("keyword") String keyword,
             @Param("status") ProductStatus status,
             @Param("sellerId") Long sellerId,
+            @Param("deletedStatus") ProductStatus deletedStatus,
+            Pageable pageable
+    );
+
+    @Query("""
+            SELECT p FROM Product p
+            WHERE p.seller.id = :memberId
+              AND p.status != :deletedStatus
+              AND (:status IS NULL OR p.status = :status)
+            """)
+    Page<Product> findMyProducts(
+            @Param("memberId") Long memberId,
+            @Param("status") ProductStatus status,
             @Param("deletedStatus") ProductStatus deletedStatus,
             Pageable pageable
     );
