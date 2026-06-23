@@ -3,6 +3,7 @@ package com.example.fivespringusedmarket.product.controller;
 import com.example.fivespringusedmarket.common.response.ApiResponse;
 import com.example.fivespringusedmarket.common.security.AuthMember;
 import com.example.fivespringusedmarket.product.dto.CreateProductRequest;
+import com.example.fivespringusedmarket.product.dto.DeleteProductResponse;
 import com.example.fivespringusedmarket.product.dto.ProductResponse;
 import com.example.fivespringusedmarket.product.dto.UpdateProductRequest;
 import com.example.fivespringusedmarket.product.dto.ProductPageResponse;
@@ -15,10 +16,11 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -52,6 +54,15 @@ public class ProductController {
     ) {
         ProductResponse response = productService.updateProduct(authMember.memberId(), productId, request);
         return ResponseEntity.ok(ApiResponse.success("상품이 수정되었습니다.", response));
+    }
+
+    @DeleteMapping("/{productId}")
+    public ResponseEntity<ApiResponse<DeleteProductResponse>> deleteProduct(
+            @AuthenticationPrincipal AuthMember authMember,
+            @PathVariable Long productId
+    ) {
+        DeleteProductResponse response = productService.deleteProduct(authMember.memberId(), productId);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @GetMapping("/{productId}")
