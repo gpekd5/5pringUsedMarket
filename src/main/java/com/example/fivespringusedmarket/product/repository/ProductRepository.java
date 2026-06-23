@@ -13,7 +13,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     @Query("""
             SELECT p FROM Product p
-            WHERE (:category IS NULL OR p.category = :category)
+            WHERE p.status != :deletedStatus
+              AND (:category IS NULL OR p.category = :category)
               AND (:status IS NULL OR p.status = :status)
               AND (:keyword IS NULL OR p.title LIKE %:keyword%)
               AND (:sellerId IS NULL OR p.seller.id = :sellerId)
@@ -23,6 +24,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             @Param("keyword") String keyword,
             @Param("status") ProductStatus status,
             @Param("sellerId") Long sellerId,
+            @Param("deletedStatus") ProductStatus deletedStatus,
             Pageable pageable
     );
 }

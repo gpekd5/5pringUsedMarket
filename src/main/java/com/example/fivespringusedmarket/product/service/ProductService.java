@@ -113,12 +113,12 @@ public class ProductService {
             throw new CustomException(ErrorCode.INVALID_REQUEST);
         }
 
-        Page<Product> productPage = productRepository.searchProducts(categoryEnum, keyword, statusEnum, sellerId, pageable);
+        Page<Product> productPage = productRepository.searchProducts(categoryEnum, keyword, statusEnum, sellerId, ProductStatus.DELETED, pageable);
 
         // 대표 이미지(sortOrder=1)를 상품 ID 기준으로 한 번에 조회해 N+1을 방지한다.
         List<Long> productIds = productPage.map(Product::getId).toList();
         Map<Long, String> imageUrlMap = productImageRepository
-                .findByProductIdInAndSortOrder(productIds, 1)
+                .findByProductIdInAndSortOrder(productIds, 0)
                 .stream()
                 .collect(Collectors.toMap(img -> img.getProduct().getId(), ProductImage::getImageUrl));
 
