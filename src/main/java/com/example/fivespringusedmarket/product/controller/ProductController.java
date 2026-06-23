@@ -3,7 +3,6 @@ package com.example.fivespringusedmarket.product.controller;
 import com.example.fivespringusedmarket.common.response.ApiResponse;
 import com.example.fivespringusedmarket.common.security.AuthMember;
 import com.example.fivespringusedmarket.product.dto.CreateProductRequest;
-import com.example.fivespringusedmarket.product.dto.DeleteProductResponse;
 import com.example.fivespringusedmarket.product.dto.ProductResponse;
 import com.example.fivespringusedmarket.product.dto.UpdateProductRequest;
 import com.example.fivespringusedmarket.product.dto.ProductPageResponse;
@@ -68,6 +67,16 @@ public class ProductController {
     @GetMapping("/{productId}")
     public ResponseEntity<ApiResponse<ProductResponse>> getProduct(@PathVariable Long productId) {
         ProductResponse response = productService.getProduct(productId);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<ProductPageResponse>> getMyProducts(
+            @AuthenticationPrincipal AuthMember authMember,
+            @RequestParam(required = false) String status,
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
+    ) {
+        ProductPageResponse response = productService.getMyProducts(authMember.memberId(), status, pageable);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
