@@ -83,4 +83,8 @@ public class Product extends BaseEntity {
         return this.status == ProductStatus.SOLD;
     }
 
+    public boolean isDeleted() {
+        return this.status == ProductStatus.DELETED;
+    }
+
 }
