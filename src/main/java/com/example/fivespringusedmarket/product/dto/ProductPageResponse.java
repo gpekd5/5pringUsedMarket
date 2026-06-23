@@ -8,19 +8,19 @@ import org.springframework.data.domain.Page;
  */
 public record ProductPageResponse(
         List<ProductListItemResponse> content,
-        long totalElements,
-        int totalPages,
+        int page,
         int size,
-        int number
+        long totalElements,
+        int totalPages
 ) {
 
     public static ProductPageResponse of(Page<ProductListItemResponse> page) {
         return new ProductPageResponse(
                 page.getContent(),
-                page.getTotalElements(),
-                page.getTotalPages(),
+                page.getNumber(),
                 page.getSize(),
-                page.getNumber()
+                page.getTotalElements(),
+                page.getTotalPages()
         );
     }
 }
