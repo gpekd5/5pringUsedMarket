@@ -64,7 +64,22 @@ public class Product extends BaseEntity {
         return new Product(seller, title, description, price, category);
     }
 
+    public void update(String title, Integer price, String description, ProductCategory category) {
+        if (title != null) this.title = title;
+        if (price != null) this.price = price;
+        if (description != null) this.description = description;
+        if (category != null) this.category = category;
+    }
+
     public void updateStatus(ProductStatus status) {
         this.status = status;
+    }
+
+    public boolean isOwnedBy(Long memberId) {
+        return this.seller.getId().equals(memberId);
+    }
+
+    public boolean isSold() {
+        return this.status == ProductStatus.SOLD;
     }
 }
