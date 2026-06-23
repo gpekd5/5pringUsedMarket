@@ -62,6 +62,7 @@
 - 예외는 `CustomException` + `ErrorCode` + `GlobalExceptionHandler` 구조를 사용한다.
 - 인증 사용자는 `@AuthenticationPrincipal` 또는 공통 Auth 객체에서 꺼낸다.
 - 클라이언트가 memberId, senderId 같은 인증 관련 식별자를 Body로 보내더라도 신뢰하지 않는다.
+- 테스트 코드는 `given`, `when`, `then` 순서로 구분해서 작성한다.
 
 ## 3. 패키지 구조 예시
 
