@@ -86,11 +86,6 @@ public class ProductService {
             throw new CustomException(ErrorCode.ACCESS_DENIED);
         }
 
-        if (product.isReserved()) {
-            throw new CustomException(ErrorCode.CANNOT_DELETE_RESERVED_PRODUCT);
-        }
-
-        // 실제 삭제 대신 상태를 DELETE로 변경해 소프트 삭제를 처리한다.
         product.updateStatus(ProductStatus.DELETED);
 
         return new DeleteProductResponse("상품이 삭제되었습니다.", productId);

@@ -22,8 +22,7 @@ public enum ErrorCode {
 	INVALID_CATEGORY(HttpStatus.BAD_REQUEST, "유효하지 않은 카테고리 값입니다."),
 	INVALID_PRICE(HttpStatus.BAD_REQUEST, "가격은 0 이상이어야 합니다."),
 	PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "해당 상품을 찾을 수 없습니다."),
-	CANNOT_MODIFY_SOLD_PRODUCT(HttpStatus.BAD_REQUEST, "판매 완료된 상품은 수정할 수 없습니다."),
-	CANNOT_DELETE_RESERVED_PRODUCT(HttpStatus.FORBIDDEN, "예약 중인 상품은 삭제할 수 없습니다.");
+	CANNOT_MODIFY_SOLD_PRODUCT(HttpStatus.BAD_REQUEST, "판매 완료된 상품은 수정할 수 없습니다.");
     private final HttpStatus httpStatus;
     private final String message;
 
