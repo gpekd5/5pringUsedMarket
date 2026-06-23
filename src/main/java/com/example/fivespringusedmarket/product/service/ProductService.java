@@ -91,7 +91,7 @@ public class ProductService {
         }
 
         // 실제 삭제 대신 상태를 DELETE로 변경해 소프트 삭제를 처리한다.
-        product.updateStatus(ProductStatus.DELETE);
+        product.updateStatus(ProductStatus.DELETED);
 
         return new DeleteProductResponse("상품이 삭제되었습니다.", productId);
     }
