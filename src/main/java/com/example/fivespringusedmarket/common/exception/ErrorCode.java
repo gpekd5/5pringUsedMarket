@@ -16,7 +16,21 @@ public enum ErrorCode {
     MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "회원을 찾을 수 없습니다."),
     INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "유효하지 않은 토큰입니다."),
     EXPIRED_TOKEN(HttpStatus.UNAUTHORIZED, "만료된 토큰입니다."),
-    INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 내부 오류가 발생했습니다.");
+    INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 내부 오류가 발생했습니다."),
+
+    // 상품
+    PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 상품입니다."),
+    PRODUCT_SOLD_OUT(HttpStatus.GONE, "판매 완료된 상품에는 채팅할 수 없습니다."),
+    PRODUCT_OWNER_CANNOT_CHAT(HttpStatus.FORBIDDEN, "본인 상품에는 채팅할 수 없습니다."),
+
+    // 채팅
+    CHAT_ROOM_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 채팅방입니다."),
+    CHAT_ACCESS_DENIED(HttpStatus.FORBIDDEN, "채팅방 참여자가 아닙니다."),
+    NOT_CS_ROOM(HttpStatus.CONFLICT, "CS 타입이 아닌 채팅방입니다."),
+    INVALID_STATUS_TRANSITION(HttpStatus.BAD_REQUEST, "유효하지 않은 CS 상태 전이입니다."),
+    INVALID_CHAT_ROOM_TYPE(HttpStatus.BAD_REQUEST, "type은 TRADE 또는 CS만 허용됩니다."),
+    CHAT_COMPLETED(HttpStatus.BAD_REQUEST, "완료된 CS 채팅방에는 메시지를 전송할 수 없습니다."),
+    CS_ALREADY_IN_PROGRESS(HttpStatus.CONFLICT, "이미 다른 관리자가 처리 중인 문의입니다.");
 
     private final HttpStatus httpStatus;
     private final String message;
