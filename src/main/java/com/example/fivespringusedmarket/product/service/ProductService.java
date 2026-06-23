@@ -78,7 +78,7 @@ public class ProductService {
     }
 
     @Transactional
-    public DeleteProductResponse deleteProduct(Long memberId, Long productId) {
+    public void deleteProduct(Long memberId, Long productId) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new CustomException(ErrorCode.PRODUCT_NOT_FOUND));
 
@@ -87,8 +87,6 @@ public class ProductService {
         }
 
         product.updateStatus(ProductStatus.DELETED);
-
-        return new DeleteProductResponse("상품이 삭제되었습니다.", productId);
     }
 
     @Transactional(readOnly = true)
