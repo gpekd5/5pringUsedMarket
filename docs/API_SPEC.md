@@ -93,6 +93,14 @@ COMPLETED
 }
 ```
 
+### Validation
+
+| 필드 | 규칙 |
+|---|---|
+| email | 이메일 형식만 허용, 서비스 내 유니크 |
+| password | 필수, 저장 시 BCrypt 등 단방향 해시 적용 |
+| nickname | 필수, 서비스 내 유니크 |
+
 ### Response
 
 ```json
@@ -554,10 +562,6 @@ COMPLETED
 - Path: `/api/members/{memberId}/profile`
 - Auth: 불필요
 
-### 주의
-
-프로필 이미지는 Member ERD의 `profile_image`를 사용한다.
-
 ### Response
 
 ```json
@@ -567,7 +571,6 @@ COMPLETED
   "data": {
     "memberId": 42,
     "nickname": "판매왕",
-    "profileImage": "https://cdn.example.com/profiles/member42.jpg",
     "productCount": 5
   }
 }
@@ -957,7 +960,6 @@ COMPLETED
 - 채팅방 참여자만 조회 가능하다.
 - `type = TRADE`이면 상품 정보와 상대방 정보를 반환한다.
 - `type = CS`이면 문의 제목, 문의 상태, 상대방 정보를 반환한다.
-- Member ERD에 프로필 이미지가 없다면 `profileImage`는 반환하지 않는다.
 
 ---
 

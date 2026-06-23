@@ -23,6 +23,31 @@
 
 ---
 
+## 1.1 주석 작성 원칙
+
+팀원 간 코드 리뷰와 학습 효율을 위해 설명이 필요한 클래스와 메서드에는 주석을 작성한다.
+
+- 클래스 설명은 클래스 선언 바로 위에 JavaDoc 형식으로 작성한다.
+- 메서드 내부의 짧은 보조 설명은 `//` 한 줄 주석을 사용한다.
+- 단순히 코드 내용을 반복하는 주석은 작성하지 않는다.
+- 도메인 규칙, 보안 의도, 확장 포인트처럼 코드를 처음 보는 팀원이 이해해야 하는 맥락을 우선 설명한다.
+
+```java
+/**
+ * 회원 정보를 저장하는 JPA 엔티티다.
+ * 이메일과 닉네임은 서비스 내에서 유일해야 한다.
+ */
+public class Member {
+
+    public static Member create(String email, String encodedPassword, String nickname) {
+        // 신규 가입 회원은 기본 권한을 MEMBER로 생성한다.
+        return new Member(email, encodedPassword, nickname, MemberRole.MEMBER);
+    }
+}
+```
+
+---
+
 ## 2. 패키지 구조
 
 기능 단위 패키지 아래에 역할별 패키지를 둔다.
