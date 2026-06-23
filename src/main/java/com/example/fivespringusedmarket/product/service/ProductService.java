@@ -5,7 +5,7 @@ import com.example.fivespringusedmarket.common.exception.ErrorCode;
 import com.example.fivespringusedmarket.member.entity.Member;
 import com.example.fivespringusedmarket.member.repository.MemberRepository;
 import com.example.fivespringusedmarket.product.dto.CreateProductRequest;
-import com.example.fivespringusedmarket.product.dto.CreateProductResponse;
+import com.example.fivespringusedmarket.product.dto.ProductResponse;
 import com.example.fivespringusedmarket.product.dto.ProductListItemResponse;
 import com.example.fivespringusedmarket.product.dto.ProductPageResponse;
 import com.example.fivespringusedmarket.product.entity.Product;
@@ -36,7 +36,7 @@ public class ProductService {
     private final MemberRepository memberRepository;
 
     @Transactional
-    public CreateProductResponse createProduct(Long memberId, CreateProductRequest request) {
+    public ProductResponse createProduct(Long memberId, CreateProductRequest request) {
         if (request.price() < 0) {
             throw new CustomException(ErrorCode.INVALID_PRICE);
         }
@@ -51,7 +51,17 @@ public class ProductService {
 
         List<ProductImage> images = saveImages(product, request.images());
 
-        return CreateProductResponse.of(product, images);
+        return ProductResponse.of(product, images);
+    }
+
+    @Transactional(readOnly = true)
+    public ProductResponse getProduct(Long productId) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new CustomException(ErrorCode.PRODUCT_NOT_FOUND));
+
+        List<ProductImage> images = productImageRepository.findByProductIdOrderBySortOrderAsc(productId);
+
+        return ProductResponse.of(product, images);
     }
 
     @Transactional(readOnly = true)
