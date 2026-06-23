@@ -5,6 +5,7 @@ import com.example.fivespringusedmarket.common.security.AuthMember;
 import com.example.fivespringusedmarket.product.dto.CreateProductRequest;
 import com.example.fivespringusedmarket.product.dto.ProductResponse;
 import com.example.fivespringusedmarket.product.dto.UpdateProductRequest;
+import com.example.fivespringusedmarket.product.dto.UpdateProductStatusRequest;
 import com.example.fivespringusedmarket.product.dto.ProductPageResponse;
 import com.example.fivespringusedmarket.product.service.ProductService;
 import jakarta.validation.Valid;
@@ -68,6 +69,25 @@ public class ProductController {
     public ResponseEntity<ApiResponse<ProductResponse>> getProduct(@PathVariable Long productId) {
         ProductResponse response = productService.getProduct(productId);
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @PatchMapping("/{productId}/status")
+    public ResponseEntity<ApiResponse<Void>> updateProductStatus(
+            @AuthenticationPrincipal AuthMember authMember,
+            @PathVariable Long productId,
+            @Valid @RequestBody UpdateProductStatusRequest request
+    ) {
+        productService.updateProductStatus(authMember.memberId(), productId, request.status());
+        return ResponseEntity.ok(ApiResponse.success("상품 상태가 변경되었습니다.", null));
+    }
+
+    @PatchMapping("/{productId}/status/cancel-reservation")
+    public ResponseEntity<ApiResponse<Void>> cancelReservation(
+            @AuthenticationPrincipal AuthMember authMember,
+            @PathVariable Long productId
+    ) {
+        productService.cancelReservation(authMember.memberId(), productId);
+        return ResponseEntity.ok(ApiResponse.success("예약이 취소되었습니다.", null));
     }
 
     @GetMapping("/me")

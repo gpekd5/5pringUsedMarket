@@ -154,6 +154,46 @@ public class ProductService {
         return ProductPageResponse.of(responsePage);
     }
 
+    @Transactional
+    public void updateProductStatus(Long memberId, Long productId, String status) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new CustomException(ErrorCode.PRODUCT_NOT_FOUND));
+
+        if (!product.isOwnedBy(memberId)) {
+            throw new CustomException(ErrorCode.ACCESS_DENIED);
+        }
+
+        ProductStatus next;
+        try {
+            next = ProductStatus.valueOf(status);
+        } catch (IllegalArgumentException e) {
+            throw new CustomException(ErrorCode.INVALID_STATUS);
+        }
+
+        // DELETED, RESERVED→ON_SALE 전이는 이 API에서 허용하지 않는다.
+        if (next == ProductStatus.DELETED || !product.canTransitionTo(next)) {
+            throw new CustomException(ErrorCode.INVALID_STATUS_TRANSITION);
+        }
+
+        product.updateStatus(next);
+    }
+
+    @Transactional
+    public void cancelReservation(Long memberId, Long productId) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new CustomException(ErrorCode.PRODUCT_NOT_FOUND));
+
+        if (!product.isOwnedBy(memberId)) {
+            throw new CustomException(ErrorCode.ACCESS_DENIED);
+        }
+
+        if (product.getStatus() != ProductStatus.RESERVED) {
+            throw new CustomException(ErrorCode.INVALID_STATUS_TRANSITION);
+        }
+
+        product.updateStatus(ProductStatus.ON_SALE);
+    }
+
     @Transactional(readOnly = true)
     public MemberProfileResponse getMemberProfile(Long memberId) {
         Member member = memberRepository.findById(memberId)
