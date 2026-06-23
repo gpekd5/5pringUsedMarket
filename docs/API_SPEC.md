@@ -654,7 +654,7 @@ COMPLETED
 - Redis Lock을 이용해 쿠폰별 발급 경쟁을 제어한다.
 - Lock Key 예시: `lock:coupon:{couponId}`
 - 발급 조건: 이벤트 기간, 잔여 수량, 중복 발급 여부
-- 성공 시 `user_coupon` 저장 및 쿠폰 잔여 수량 차감
+- 성공 시 `user_coupons` 저장 및 쿠폰 잔여 수량 차감
 - 실패 또는 성공 후 Lock을 해제한다.
 
 ### Response
@@ -744,7 +744,7 @@ COMPLETED
 ### 처리 정책
 
 - 상품명 또는 설명 컬럼에 `LIKE` 검색을 수행한다.
-- 로그인 사용자가 keyword로 검색하면 `search_log`에 저장한다.
+- 로그인 사용자가 keyword로 검색하면 `search_logs`에 저장한다.
 
 ---
 
@@ -1002,7 +1002,7 @@ COMPLETED
 ### 처리 정책
 
 - 채팅방 참여자만 처리할 수 있다.
-- 요청 사용자의 `chat_member.last_read_message_id`를 갱신한다.
+- 요청 사용자의 `chat_members.last_read_message_id`를 갱신한다.
 - memberId는 Request Body에서 받지 않고 인증 Principal에서 가져온다.
 
 ---

@@ -526,7 +526,7 @@ UNIQUE(member_id, product_id)
 - 선착순 쿠폰 발급은 Redis Lock으로 보호한다.
 - 쿠폰 발급 조건은 이벤트 기간, 잔여 수량, 중복 발급 여부다.
 - 동일 회원은 동일 쿠폰을 중복 발급받을 수 없다.
-- `user_coupon`에는 `member_id + coupon_id` Unique 제약을 둔다.
+- `user_coupons`에는 `member_id + coupon_id` Unique 제약을 둔다.
 - 쿠폰 수량 차감과 UserCoupon 저장은 하나의 트랜잭션에서 처리한다.
 
 ```text
