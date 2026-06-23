@@ -5,6 +5,7 @@ import com.example.fivespringusedmarket.common.exception.ErrorCode;
 import com.example.fivespringusedmarket.member.entity.Member;
 import com.example.fivespringusedmarket.member.repository.MemberRepository;
 import com.example.fivespringusedmarket.product.dto.CreateProductRequest;
+import com.example.fivespringusedmarket.product.dto.MemberProfileResponse;
 import com.example.fivespringusedmarket.product.dto.ProductResponse;
 import com.example.fivespringusedmarket.product.dto.UpdateProductRequest;
 import com.example.fivespringusedmarket.product.dto.ProductListItemResponse;
@@ -151,6 +152,16 @@ public class ProductService {
         );
 
         return ProductPageResponse.of(responsePage);
+    }
+
+    @Transactional(readOnly = true)
+    public MemberProfileResponse getMemberProfile(Long memberId) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
+
+        long productCount = productRepository.countBySellerIdAndStatusNot(memberId, ProductStatus.DELETED);
+
+        return MemberProfileResponse.of(member, productCount);
     }
 
     private ProductCategory parseCategory(String value) {
