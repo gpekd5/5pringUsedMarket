@@ -2,6 +2,7 @@ package com.example.fivespringusedmarket.chat.controller;
 
 import com.example.fivespringusedmarket.chat.dto.request.CsChatRoomCreateRequest;
 import com.example.fivespringusedmarket.chat.dto.request.TradeChatRoomCreateRequest;
+import com.example.fivespringusedmarket.chat.dto.response.ChatRoomListResponse;
 import com.example.fivespringusedmarket.chat.dto.response.CsChatRoomCreateResponse;
 import com.example.fivespringusedmarket.chat.dto.response.TradeChatRoomCreateResponse;
 import com.example.fivespringusedmarket.chat.service.ChatService;
@@ -9,13 +10,12 @@ import com.example.fivespringusedmarket.common.response.ApiResponse;
 import com.example.fivespringusedmarket.common.security.AuthMember;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/chat/rooms")
@@ -44,5 +44,21 @@ public class ChatController {
         CsChatRoomCreateResponse response = chatService.createCsRoom(authMember.memberId(), request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("CS 문의 채팅방 생성 성공", response));
+    }
+
+    /**
+     * 채팅방 목록 조회
+      type 파라미터 TRADE / CS 필터링이 가능
+     */
+    @GetMapping
+    public ResponseEntity<ApiResponse<Page<ChatRoomListResponse>>> getChatRooms(
+            @AuthenticationPrincipal AuthMember authMember,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        Page<ChatRoomListResponse> response = chatService.getChatRooms(
+                authMember.memberId(), PageRequest.of(page, size)
+        );
+        return ResponseEntity.ok(ApiResponse.success("채팅방 목록 조회 성공", response));
     }
 }
