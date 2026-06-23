@@ -43,6 +43,10 @@ public class ChatMember {
     @Column(name = "last_read_message_id", nullable = false)
     private Long lastReadMessageId = 0L;
 
+    // 메시지 수신 시 +1, 채팅방 입장 시 0으로 리셋한다.
+    @Column(name = "unread_count", nullable = false)
+    private long unreadCount = 0L;
+
     @CreatedDate
     @Column(name = "joined_at", nullable = false, updatable = false)
     private LocalDateTime joinedAt;
@@ -53,10 +57,19 @@ public class ChatMember {
         chatMember.member = member;
         chatMember.memberRole = role;
         chatMember.lastReadMessageId = 0L;
+        chatMember.unreadCount = 0L;
         return chatMember;
     }
 
     public void updateLastReadMessageId(Long messageId) {
         this.lastReadMessageId = messageId;
+    }
+
+    public void incrementUnreadCount() {
+        this.unreadCount++;
+    }
+
+    public void resetUnreadCount() {
+        this.unreadCount = 0L;
     }
 }
