@@ -6,6 +6,7 @@ import com.example.fivespringusedmarket.member.entity.Member;
 import com.example.fivespringusedmarket.member.repository.MemberRepository;
 import com.example.fivespringusedmarket.product.dto.CreateProductRequest;
 import com.example.fivespringusedmarket.product.dto.ProductResponse;
+import com.example.fivespringusedmarket.product.dto.UpdateProductRequest;
 import com.example.fivespringusedmarket.product.dto.ProductListItemResponse;
 import com.example.fivespringusedmarket.product.dto.ProductPageResponse;
 import com.example.fivespringusedmarket.product.entity.Product;
@@ -50,6 +51,27 @@ public class ProductService {
         );
 
         List<ProductImage> images = saveImages(product, request.images());
+
+        return ProductResponse.of(product, images);
+    }
+
+    @Transactional
+    public ProductResponse updateProduct(Long memberId, Long productId, UpdateProductRequest request) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new CustomException(ErrorCode.PRODUCT_NOT_FOUND));
+
+        if (!product.isOwnedBy(memberId)) {
+            throw new CustomException(ErrorCode.ACCESS_DENIED);
+        }
+
+        if (product.isSold()) {
+            throw new CustomException(ErrorCode.CANNOT_MODIFY_SOLD_PRODUCT);
+        }
+
+        ProductCategory category = request.category() != null ? parseCategory(request.category()) : null;
+        product.update(request.title(), request.price(), request.description(), category);
+
+        List<ProductImage> images = replaceImages(product, request.images());
 
         return ProductResponse.of(product, images);
     }
@@ -99,6 +121,16 @@ public class ProductService {
         } catch (IllegalArgumentException e) {
             throw new CustomException(ErrorCode.INVALID_REQUEST);
         }
+    }
+
+    private List<ProductImage> replaceImages(Product product, List<String> imageUrls) {
+        if (imageUrls == null) {
+            // images 필드가 없으면 기존 이미지를 유지한다.
+            return productImageRepository.findByProductIdOrderBySortOrderAsc(product.getId());
+        }
+
+        productImageRepository.deleteByProductId(product.getId());
+        return saveImages(product, imageUrls);
     }
 
     private List<ProductImage> saveImages(Product product, List<String> imageUrls) {
