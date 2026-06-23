@@ -6,19 +6,26 @@ import com.example.fivespringusedmarket.member.entity.Member;
 import com.example.fivespringusedmarket.member.repository.MemberRepository;
 import com.example.fivespringusedmarket.product.dto.CreateProductRequest;
 import com.example.fivespringusedmarket.product.dto.CreateProductResponse;
+import com.example.fivespringusedmarket.product.dto.ProductListItemResponse;
+import com.example.fivespringusedmarket.product.dto.ProductPageResponse;
 import com.example.fivespringusedmarket.product.entity.Product;
 import com.example.fivespringusedmarket.product.entity.ProductCategory;
 import com.example.fivespringusedmarket.product.entity.ProductImage;
+import com.example.fivespringusedmarket.product.entity.ProductStatus;
 import com.example.fivespringusedmarket.product.repository.ProductImageRepository;
 import com.example.fivespringusedmarket.product.repository.ProductRepository;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 상품 등록 및 관리 비즈니스 로직을 담당한다.
+ * 상품 등록 및 조회 비즈니스 로직을 담당한다.
  */
 @Service
 @RequiredArgsConstructor
@@ -47,11 +54,40 @@ public class ProductService {
         return CreateProductResponse.of(product, images);
     }
 
+    @Transactional(readOnly = true)
+    public ProductPageResponse getProducts(String category, String keyword, String status, Pageable pageable) {
+        ProductCategory categoryEnum = category != null ? parseCategory(category) : null;
+        ProductStatus statusEnum = status != null ? parseStatus(status) : ProductStatus.ON_SALE;
+
+        Page<Product> productPage = productRepository.searchProducts(categoryEnum, keyword, statusEnum, pageable);
+
+        // 대표 이미지(sortOrder=1)를 상품 ID 기준으로 한 번에 조회해 N+1을 방지한다.
+        List<Long> productIds = productPage.map(Product::getId).toList();
+        Map<Long, String> imageUrlMap = productImageRepository
+                .findByProductIdInAndSortOrder(productIds, 1)
+                .stream()
+                .collect(Collectors.toMap(img -> img.getProduct().getId(), ProductImage::getImageUrl));
+
+        Page<ProductListItemResponse> responsePage = productPage.map(product ->
+                ProductListItemResponse.of(product, imageUrlMap.get(product.getId()))
+        );
+
+        return ProductPageResponse.of(responsePage);
+    }
+
     private ProductCategory parseCategory(String value) {
         try {
             return ProductCategory.valueOf(value);
         } catch (IllegalArgumentException e) {
             throw new CustomException(ErrorCode.INVALID_CATEGORY);
+        }
+    }
+
+    private ProductStatus parseStatus(String value) {
+        try {
+            return ProductStatus.valueOf(value);
+        } catch (IllegalArgumentException e) {
+            throw new CustomException(ErrorCode.INVALID_REQUEST);
         }
     }
 
