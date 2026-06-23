@@ -82,4 +82,8 @@ public class Product extends BaseEntity {
     public boolean isSold() {
         return this.status == ProductStatus.SOLD;
     }
+
+    public boolean isReserved() {
+        return this.status == ProductStatus.RESERVED;
+    }
 }
