@@ -160,10 +160,10 @@ public class ProductService {
             return new ArrayList<>();
         }
 
-        // 요청 배열 순서 기준으로 1부터 sortOrder를 부여한다.
+        // 요청 배열 순서 기준으로 0부터 sortOrder를 부여한다.
         List<ProductImage> images = new ArrayList<>();
         for (int i = 0; i < imageUrls.size(); i++) {
-            images.add(ProductImage.create(product, imageUrls.get(i), i + 1));
+            images.add(ProductImage.create(product, imageUrls.get(i), i));
         }
 
         return productImageRepository.saveAll(images);
