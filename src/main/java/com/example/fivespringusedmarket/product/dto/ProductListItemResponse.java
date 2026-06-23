@@ -13,11 +13,11 @@ public record ProductListItemResponse(
         int price,
         String category,
         String status,
-        String imageUrl,
+        String thumbnailUrl,
         LocalDateTime createdAt
 ) {
 
-    public static ProductListItemResponse of(Product product, String imageUrl) {
+    public static ProductListItemResponse of(Product product, String thumbnailUrl) {
         return new ProductListItemResponse(
                 product.getId(),
                 product.getSeller().getId(),
@@ -25,7 +25,7 @@ public record ProductListItemResponse(
                 product.getPrice(),
                 product.getCategory().name(),
                 product.getStatus().name(),
-                imageUrl,
+                thumbnailUrl,
                 product.getCreatedAt()
         );
     }
