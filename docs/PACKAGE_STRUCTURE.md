@@ -105,9 +105,10 @@ SwaggerConfig
 ## entity
 
 공통 생성·수정 시간을 관리한다.
+추후 소프트 삭제 정책이 확정되면 삭제 시간도 함께 관리할 수 있도록 `BaseEntity`를 사용한다.
 
 ```text
-BaseTimeEntity
+BaseEntity
 ```
 
 ## exception

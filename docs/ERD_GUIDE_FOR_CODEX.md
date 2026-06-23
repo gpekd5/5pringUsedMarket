@@ -25,7 +25,8 @@
 
 - 모든 테이블의 PK는 `BIGINT` 기반 `id`를 사용한다.
 - JPA 엔티티에서는 `@GeneratedValue(strategy = GenerationType.IDENTITY)`를 기본으로 사용한다.
-- 생성일과 수정일을 모두 가진 엔티티는 `BaseTimeEntity`를 상속한다.
+- 생성일과 수정일을 모두 가진 엔티티는 `BaseEntity`를 상속한다.
+- `BaseEntity`는 현재 `created_at`, `updated_at`을 관리하며, 추후 소프트 삭제 정책이 확정되면 `deleted_at`을 추가할 수 있도록 확장 가능한 공통 엔티티로 둔다.
 - 이력성 테이블처럼 `created_at`만 가진 엔티티는 생성 시간만 별도로 매핑한다.
 - `created_at`, `updated_at`은 ERD에 정의된 컬럼만 `LocalDateTime`으로 매핑한다.
 - 외래키 컬럼은 ERD 기준으로 유지하되, JPA 연관관계는 기본적으로 `@ManyToOne(fetch = FetchType.LAZY)`를 사용한다.
@@ -86,14 +87,13 @@ public enum CsStatus {
 | email | VARCHAR(100) | 로그인 이메일 |
 | password | VARCHAR(255) | 암호화된 비밀번호 |
 | nickname | VARCHAR(50) | 닉네임 |
-| profile_image | VARCHAR(500) | 프로필 이미지 URL |
 | role | ENUM(MEMBER, ADMIN) | 권한 |
 | created_at | DATETIME | 생성일 |
 | updated_at | DATETIME | 수정일 |
 
 ### 제약조건
 
-- `email`은 유니크해야 한다.
+- `email`은 이메일 형식만 허용하며, 유니크해야 한다.
 - `nickname`은 서비스 내에서 유일해야 한다.
 - `password`는 반드시 BCrypt 등 단방향 해시로 저장한다.
 
@@ -601,7 +601,7 @@ SUBSCRIBE: /sub/chat/rooms/{roomId}
 1. 공통 응답 구조 `ApiResponse`
 2. 공통 예외 구조 `GlobalExceptionHandler`
 3. 인증/인가 구조 `Spring Security + JWT`
-4. `BaseTimeEntity`
+4. `BaseEntity`
 5. Enum 패키지 위치
 6. ERD 기반 Entity 생성
 7. Repository 기본 메서드와 유니크 제약조건

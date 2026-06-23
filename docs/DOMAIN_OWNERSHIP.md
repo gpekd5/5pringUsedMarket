@@ -27,7 +27,7 @@
 - ErrorCode
 - CustomException
 - GlobalExceptionHandler
-- BaseTimeEntity
+- BaseEntity
 - 공통 설정
 
 ### 마이페이지(MyPage)
