@@ -6,9 +6,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 상품 등록 성공 시 반환하는 응답 값이다.
+ * 상품 등록 및 상세 조회 시 반환하는 응답 값이다.
  */
-public record CreateProductResponse(
+public record ProductResponse(
         Long id,
         Long memberId,
         String title,
@@ -34,8 +34,8 @@ public record CreateProductResponse(
         }
     }
 
-    public static CreateProductResponse of(Product product, List<ProductImage> images) {
-        return new CreateProductResponse(
+    public static ProductResponse of(Product product, List<ProductImage> images) {
+        return new ProductResponse(
                 product.getId(),
                 product.getSeller().getId(),
                 product.getTitle(),
