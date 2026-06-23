@@ -57,12 +57,12 @@ public class ProductController {
     }
 
     @DeleteMapping("/{productId}")
-    public ResponseEntity<ApiResponse<DeleteProductResponse>> deleteProduct(
+    public ResponseEntity<ApiResponse<Void>> deleteProduct(
             @AuthenticationPrincipal AuthMember authMember,
             @PathVariable Long productId
     ) {
-        DeleteProductResponse response = productService.deleteProduct(authMember.memberId(), productId);
-        return ResponseEntity.ok(ApiResponse.success(response));
+        productService.deleteProduct(authMember.memberId(), productId);
+        return ResponseEntity.ok(ApiResponse.success("상품이 삭제되었습니다.", null));
     }
 
     @GetMapping("/{productId}")
