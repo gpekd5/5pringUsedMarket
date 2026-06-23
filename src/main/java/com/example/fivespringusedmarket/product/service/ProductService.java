@@ -94,6 +94,10 @@ public class ProductService {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new CustomException(ErrorCode.PRODUCT_NOT_FOUND));
 
+        if (product.isDeleted()) {
+            throw new CustomException(ErrorCode.PRODUCT_NOT_FOUND);
+        }
+
         List<ProductImage> images = productImageRepository.findByProductIdOrderBySortOrderAsc(productId);
 
         return ProductResponse.of(product, images);
