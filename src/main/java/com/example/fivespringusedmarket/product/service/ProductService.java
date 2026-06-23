@@ -104,6 +104,11 @@ public class ProductService {
         ProductCategory categoryEnum = category != null ? parseCategory(category) : null;
         ProductStatus statusEnum = status != null ? parseStatus(status) : ProductStatus.ON_SALE;
 
+        // DELETED 상태는 공개 목록에서 조회할 수 없다.
+        if (statusEnum == ProductStatus.DELETED) {
+            throw new CustomException(ErrorCode.INVALID_REQUEST);
+        }
+
         Page<Product> productPage = productRepository.searchProducts(categoryEnum, keyword, statusEnum, sellerId, pageable);
 
         // 대표 이미지(sortOrder=1)를 상품 ID 기준으로 한 번에 조회해 N+1을 방지한다.
