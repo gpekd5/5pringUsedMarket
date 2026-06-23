@@ -17,6 +17,9 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 중고 상품 정보를 저장하는 JPA 엔티티다.
+ */
 @Getter
 @Entity
 @Table(name = "products")
@@ -53,7 +56,7 @@ public class Product extends BaseEntity {
         this.title = title;
         this.description = description;
         this.price = price;
-		this.category = category;
+        this.category = category;
         this.status = ProductStatus.ON_SALE;
     }
 

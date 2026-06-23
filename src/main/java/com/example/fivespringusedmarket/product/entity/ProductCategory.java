@@ -1,5 +1,8 @@
 package com.example.fivespringusedmarket.product.entity;
 
+/**
+ * 상품의 카테고리를 나타내는 열거형이다.
+ */
 public enum ProductCategory {
     DIGITAL,    // 디지털/전자기기
     FURNITURE,  // 가구/인테리어

@@ -5,6 +5,9 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.util.List;
 
+/**
+ * 상품 등록 요청 값이다.
+ */
 public record CreateProductRequest(
         @NotBlank
         @Size(max = 100)

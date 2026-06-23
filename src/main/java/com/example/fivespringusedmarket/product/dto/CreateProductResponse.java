@@ -5,6 +5,9 @@ import com.example.fivespringusedmarket.product.entity.ProductImage;
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * 상품 등록 성공 시 반환하는 응답 값이다.
+ */
 public record CreateProductResponse(
         Long id,
         Long memberId,
@@ -18,6 +21,9 @@ public record CreateProductResponse(
         LocalDateTime updatedAt
 ) {
 
+    /**
+     * 상품 이미지 정보를 담는 중첩 응답 값이다.
+     */
     public record ProductImageResponse(
             Long id,
             String imageUrl,

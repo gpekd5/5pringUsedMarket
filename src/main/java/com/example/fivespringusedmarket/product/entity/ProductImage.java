@@ -14,6 +14,9 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 상품에 첨부된 이미지 정보를 저장하는 JPA 엔티티다.
+ */
 @Getter
 @Entity
 @Table(name = "product_images")

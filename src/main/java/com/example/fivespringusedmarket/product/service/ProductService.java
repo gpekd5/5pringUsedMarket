@@ -13,11 +13,13 @@ import com.example.fivespringusedmarket.product.repository.ProductImageRepositor
 import com.example.fivespringusedmarket.product.repository.ProductRepository;
 import java.util.ArrayList;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import lombok.RequiredArgsConstructor;
-
+/**
+ * 상품 등록 및 관리 비즈니스 로직을 담당한다.
+ */
 @Service
 @RequiredArgsConstructor
 public class ProductService {
@@ -58,6 +60,7 @@ public class ProductService {
             return new ArrayList<>();
         }
 
+        // 요청 배열 순서 기준으로 1부터 sortOrder를 부여한다.
         List<ProductImage> images = new ArrayList<>();
         for (int i = 0; i < imageUrls.size(); i++) {
             images.add(ProductImage.create(product, imageUrls.get(i), i + 1));
