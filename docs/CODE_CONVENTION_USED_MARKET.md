@@ -53,7 +53,7 @@ public class Member {
 기능 단위 패키지 아래에 역할별 패키지를 둔다.
 
 ```text
-com.fivespring.usedmarket
+com.example.fivespringusedmarket
 ├── common
 │   ├── config
 │   ├── entity

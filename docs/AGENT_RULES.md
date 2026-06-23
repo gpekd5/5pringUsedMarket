@@ -17,7 +17,7 @@
 
 현재 확정된 공통 용어는 다음과 같다.
 
-- 루트 패키지: `com.fivespring.usedmarket`
+- 루트 패키지: `com.example.fivespringusedmarket`
 - 상품 삭제 상태: `DELETED`
 - 관심상품 도메인 및 URL: `wish`, `/wishes`
 - 관심상품 여부 응답 필드: `wished`
@@ -66,7 +66,7 @@
 ## 3. 패키지 구조 예시
 
 ```text
-com.fivespring.usedmarket
+com.example.fivespringusedmarket
  ├─ common
  │   ├─ config
  │   ├─ entity

@@ -87,7 +87,7 @@
 
 - 공통 구현 규칙과 문서 우선순위는 `AGENT_RULES.md`를 따른다.
 - API 계약은 `API_SPEC.md`, 데이터 구조는 `ERD_GUIDE_FOR_CODEX.md`, 패키지와 책임은 `CODE_CONVENTION_USED_MARKET.md`를 기준으로 한다.
-- 루트 패키지는 `com.fivespring.usedmarket`을 사용한다.
+- 루트 패키지는 `com.example.fivespringusedmarket`을 사용한다.
 - 상품 삭제 상태는 `DELETED`, 관심상품 URL은 `/wishes`를 사용한다.
 - 검색 v2에는 Caffeine Local Cache를 적용한다.
 - 발제 원문의 Redis Remote Cache는 도전 학습 항목이며 현재 프로젝트 구현 범위에서는 제외한다.
