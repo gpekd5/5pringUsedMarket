@@ -57,6 +57,9 @@ public class ChatRoom extends BaseEntity {
     // 마지막 메시지 전송 시각. 채팅방 목록 정렬 기준으로 사용한다.
     @Column(name = "last_message_at")
     private LocalDateTime lastMessageAt;
+    //마지막 메세지
+    @Column(name = "last_message_content", length = 500)
+    private String lastMessageContent;
 
     /**
      * 거래 채팅방을 생성한다.
@@ -79,7 +82,8 @@ public class ChatRoom extends BaseEntity {
     }
 
     //메시지가 전송될 때마다 lastMessageAt을 갱신
-    public void updateLastMessageAt(LocalDateTime sentAt) {
+    public void updateLastMessage(String content, LocalDateTime sentAt) {
+        this.lastMessageContent = content;
         this.lastMessageAt = sentAt;
     }
 }
