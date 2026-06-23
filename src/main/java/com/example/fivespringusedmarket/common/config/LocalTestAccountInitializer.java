@@ -43,7 +43,7 @@ public class LocalTestAccountInitializer implements ApplicationRunner {
 
     private void createTestAccountIfNotExists(String email, String nickname, String role) {
         Integer count = jdbcTemplate.queryForObject(
-                "select count(*) from member where email = ?",
+                "select count(*) from members where email = ?",
                 Integer.class,
                 email
         );
@@ -57,7 +57,7 @@ public class LocalTestAccountInitializer implements ApplicationRunner {
         // local 프로필에서만 테스트용 계정을 생성한다.
         jdbcTemplate.update(
                 """
-                        insert into `member`
+                        insert into members
                             (email, password, nickname, role, created_at, updated_at)
                         values
                             (?, ?, ?, ?, ?, ?)
