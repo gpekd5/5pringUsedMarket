@@ -8,4 +8,6 @@ public interface ProductImageRepository extends JpaRepository<ProductImage, Long
 
     // 대표 이미지 일괄 조회 시 사용한다.
     List<ProductImage> findByProductIdInAndSortOrder(List<Long> productIds, int sortOrder);
+
+    List<ProductImage> findByProductIdOrderBySortOrderAsc(Long productId);
 }
