@@ -7,8 +7,8 @@ import java.time.LocalDateTime;
  * 상품 목록 조회 시 각 상품 항목을 나타내는 응답 값이다.
  */
 public record ProductListItemResponse(
-        Long id,
-        Long memberId,
+        Long productId,
+        Long sellerId,
         String title,
         int price,
         String category,

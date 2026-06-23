@@ -9,8 +9,8 @@ import java.util.List;
  * 상품 등록 및 상세 조회 시 반환하는 응답 값이다.
  */
 public record ProductResponse(
-        Long id,
-        Long memberId,
+        Long productId,
+        Long sellerId,
         String title,
         int price,
         String description,
