@@ -2,6 +2,7 @@ package com.example.fivespringusedmarket.chat.service;
 
 import com.example.fivespringusedmarket.chat.dto.request.CsChatRoomCreateRequest;
 import com.example.fivespringusedmarket.chat.dto.request.TradeChatRoomCreateRequest;
+import com.example.fivespringusedmarket.chat.dto.response.ChatRoomListResponse;
 import com.example.fivespringusedmarket.chat.dto.response.CsChatRoomCreateResponse;
 import com.example.fivespringusedmarket.chat.dto.response.TradeChatRoomCreateResponse;
 import com.example.fivespringusedmarket.chat.entity.ChatMember;
@@ -17,11 +18,15 @@ import com.example.fivespringusedmarket.member.repository.MemberRepository;
 import com.example.fivespringusedmarket.product.entity.Product;
 import com.example.fivespringusedmarket.product.entity.ProductStatus;
 import com.example.fivespringusedmarket.product.repository.ProductRepository;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+import java.util.Optional;
 import java.util.Optional;
 
 @Service
@@ -61,6 +66,52 @@ public class ChatService {
 
         return TradeChatRoomCreateResponse.of(room, product, seller);
     }
+    /**
+      CS 문의 채팅방을 생성한다
+      항상 신규 생성
+     */
+    @Transactional
+    public CsChatRoomCreateResponse createCsRoom(Long customerId, CsChatRoomCreateRequest request) {
+        Member customer = getMemberOrThrow(customerId);
+        //초기상태는 WAITING
+        ChatRoom room = chatRoomRepository.save(ChatRoom.createCsRoom(request.title()));
+
+        chatMemberRepository.save(ChatMember.create(room, customer, ChatMemberRole.MEMBER));
+
+        return CsChatRoomCreateResponse.from(room);
+    }
+    /**
+      현재 회원이 참여 중인 채팅방 목록을 조회
+      type이 null이면 TRADE, CS 전체를 반환
+     */
+    @Transactional(readOnly = true)
+    public Page<ChatRoomListResponse> getChatRooms(Long memberId, Pageable pageable) {
+        Page<ChatRoom> rooms = chatRoomRepository.findRoomsByMember(memberId, pageable);
+
+        List<Long> roomIds = rooms.stream().map(ChatRoom::getId).toList();
+        if (roomIds.isEmpty()) {
+            return Page.empty(pageable);
+        }
+
+        // N+1 방지: 채팅방 참여자를 한 번에 조회한다.
+        List<ChatMember> allMembers = chatMemberRepository.findByChatRoomIdInWithMember(roomIds);
+
+        return rooms.map(room -> {
+            ChatMember myChatMember = allMembers.stream()
+                    .filter(cm -> cm.getChatRoom().getId().equals(room.getId()))
+                    .filter(cm -> cm.getMember().getId().equals(memberId))
+                    .findFirst()
+                    .orElseThrow(() -> new CustomException(ErrorCode.CHAT_ACCESS_DENIED));
+
+            ChatMember counterpartMember = allMembers.stream()
+                    .filter(cm -> cm.getChatRoom().getId().equals(room.getId()))
+                    .filter(cm -> !cm.getMember().getId().equals(memberId))
+                    .findFirst()
+                    .orElse(null);
+
+            return ChatRoomListResponse.of(room, counterpartMember, myChatMember.getUnreadCount());
+        });
+    }
 
     private Product getProductOrThrow(Long productId) {
         return productRepository.findById(productId)
@@ -70,19 +121,5 @@ public class ChatService {
     private Member getMemberOrThrow(Long memberId) {
         return memberRepository.findById(memberId)
                 .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
-    }
-    /**
-      CS 문의 채팅방을 생성한다
-      항상 신규 생성
-     */
-    @Transactional(readOnly = true)
-    public CsChatRoomCreateResponse createCsRoom(Long customerId, CsChatRoomCreateRequest request) {
-        Member customer = getMemberOrThrow(customerId);
-        //초기상태는 WAITING
-        ChatRoom room = chatRoomRepository.save(ChatRoom.createCsRoom(request.title()));
-
-        chatMemberRepository.save(ChatMember.create(room, customer, ChatMemberRole.MEMBER));
-
-        return CsChatRoomCreateResponse.from(room);
     }
 }
