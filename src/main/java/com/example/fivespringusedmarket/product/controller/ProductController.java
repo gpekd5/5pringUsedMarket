@@ -76,9 +76,10 @@ public class ProductController {
             @RequestParam(required = false) String category,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String status,
+            @RequestParam(required = false) Long sellerId,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
-        ProductPageResponse response = productService.getProducts(category, keyword, status, pageable);
+        ProductPageResponse response = productService.getProducts(category, keyword, status, sellerId, pageable);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 }

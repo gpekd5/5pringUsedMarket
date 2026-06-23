@@ -107,11 +107,11 @@ public class ProductService {
     }
 
     @Transactional(readOnly = true)
-    public ProductPageResponse getProducts(String category, String keyword, String status, Pageable pageable) {
+    public ProductPageResponse getProducts(String category, String keyword, String status, Long sellerId, Pageable pageable) {
         ProductCategory categoryEnum = category != null ? parseCategory(category) : null;
         ProductStatus statusEnum = status != null ? parseStatus(status) : ProductStatus.ON_SALE;
 
-        Page<Product> productPage = productRepository.searchProducts(categoryEnum, keyword, statusEnum, pageable);
+        Page<Product> productPage = productRepository.searchProducts(categoryEnum, keyword, statusEnum, sellerId, pageable);
 
         // 대표 이미지(sortOrder=1)를 상품 ID 기준으로 한 번에 조회해 N+1을 방지한다.
         List<Long> productIds = productPage.map(Product::getId).toList();

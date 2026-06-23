@@ -16,11 +16,13 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             WHERE (:category IS NULL OR p.category = :category)
               AND (:status IS NULL OR p.status = :status)
               AND (:keyword IS NULL OR p.title LIKE %:keyword%)
+              AND (:sellerId IS NULL OR p.seller.id = :sellerId)
             """)
     Page<Product> searchProducts(
             @Param("category") ProductCategory category,
             @Param("keyword") String keyword,
             @Param("status") ProductStatus status,
+            @Param("sellerId") Long sellerId,
             Pageable pageable
     );
 }
