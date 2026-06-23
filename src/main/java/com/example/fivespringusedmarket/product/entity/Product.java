@@ -87,4 +87,13 @@ public class Product extends BaseEntity {
         return this.status == ProductStatus.DELETED;
     }
 
+    // ON_SALE→RESERVED, ON_SALE→SOLD, RESERVED→SOLD만 허용한다.
+    public boolean canTransitionTo(ProductStatus next) {
+        return switch (this.status) {
+            case ON_SALE -> next == ProductStatus.RESERVED || next == ProductStatus.SOLD;
+            case RESERVED -> next == ProductStatus.SOLD;
+            default -> false;
+        };
+    }
+
 }
