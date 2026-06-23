@@ -5,7 +5,6 @@ import com.example.fivespringusedmarket.product.entity.ProductCategory;
 import com.example.fivespringusedmarket.product.entity.ProductStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -41,4 +40,6 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             @Param("deletedStatus") ProductStatus deletedStatus,
             Pageable pageable
     );
+
+    long countBySellerIdAndStatusNot(Long sellerId, ProductStatus status);
 }
