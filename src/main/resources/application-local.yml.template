@@ -1,0 +1,33 @@
+# 로컬 실행 시 이 파일을 참고해 application-local.yml을 구성합니다.
+# 실제 DB 접속 정보, JWT Secret, 토큰 만료 시간은 application.yml에 하드코딩하지 않고 환경변수로 주입합니다.
+#
+# 실행 예시:
+# SPRING_PROFILES_ACTIVE=local
+# DB_URL=jdbc:mysql://localhost:3306/fivespring_used_market
+# DB_USERNAME=root
+# DB_PASSWORD=your_password
+# JWT_SECRET=32자_이상의_충분히_긴_시크릿_문자열
+# JWT_ACCESS_TOKEN_EXPIRATION=3600000
+
+spring:
+  config:
+    activate:
+      on-profile: local
+
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+jwt:
+  secret: ${JWT_SECRET}
+  access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION}
