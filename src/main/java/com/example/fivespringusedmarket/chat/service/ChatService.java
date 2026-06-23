@@ -1,6 +1,8 @@
 package com.example.fivespringusedmarket.chat.service;
 
+import com.example.fivespringusedmarket.chat.dto.request.CsChatRoomCreateRequest;
 import com.example.fivespringusedmarket.chat.dto.request.TradeChatRoomCreateRequest;
+import com.example.fivespringusedmarket.chat.dto.response.CsChatRoomCreateResponse;
 import com.example.fivespringusedmarket.chat.dto.response.TradeChatRoomCreateResponse;
 import com.example.fivespringusedmarket.chat.entity.ChatMember;
 import com.example.fivespringusedmarket.chat.entity.ChatMemberRole;
@@ -69,5 +71,18 @@ public class ChatService {
         return memberRepository.findById(memberId)
                 .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
     }
+    /**
+      CS 문의 채팅방을 생성한다
+      항상 신규 생성
+     */
+    @Transactional(readOnly = true)
+    public CsChatRoomCreateResponse createCsRoom(Long customerId, CsChatRoomCreateRequest request) {
+        Member customer = getMemberOrThrow(customerId);
+        //초기상태는 WAITING
+        ChatRoom room = chatRoomRepository.save(ChatRoom.createCsRoom(request.title()));
 
+        chatMemberRepository.save(ChatMember.create(room, customer, ChatMemberRole.MEMBER));
+
+        return CsChatRoomCreateResponse.from(room);
+    }
 }

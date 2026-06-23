@@ -1,6 +1,8 @@
 package com.example.fivespringusedmarket.chat.controller;
 
+import com.example.fivespringusedmarket.chat.dto.request.CsChatRoomCreateRequest;
 import com.example.fivespringusedmarket.chat.dto.request.TradeChatRoomCreateRequest;
+import com.example.fivespringusedmarket.chat.dto.response.CsChatRoomCreateResponse;
 import com.example.fivespringusedmarket.chat.dto.response.TradeChatRoomCreateResponse;
 import com.example.fivespringusedmarket.chat.service.ChatService;
 import com.example.fivespringusedmarket.common.response.ApiResponse;
@@ -30,5 +32,17 @@ public class ChatController {
         TradeChatRoomCreateResponse response = chatService.findOrCreateTradeRoom(authMember.memberId(), request);
 
         return ResponseEntity.ok(ApiResponse.success("채팅방 조회/생성 성공", response));
+    }
+    /**
+     * CS 문의 채팅방 생성.
+     */
+    @PostMapping("/cs")
+    public ResponseEntity<ApiResponse<CsChatRoomCreateResponse>> createCsRoom(
+            @AuthenticationPrincipal AuthMember authMember,
+            @Valid @RequestBody CsChatRoomCreateRequest request
+    ) {
+        CsChatRoomCreateResponse response = chatService.createCsRoom(authMember.memberId(), request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("CS 문의 채팅방 생성 성공", response));
     }
 }

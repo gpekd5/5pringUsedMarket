@@ -16,6 +16,9 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -64,6 +67,14 @@ public class ChatRoom extends BaseEntity {
         room.type = ChatRoomType.TRADE;
         room.title = product.getTitle();
         room.product = product;
+        return room;
+    }
+
+    public static ChatRoom createCsRoom(String title) {
+        ChatRoom room = new ChatRoom();
+        room.type = ChatRoomType.CS;
+        room.title = title;
+        room.csStatus = CsStatus.WAITING;
         return room;
     }
 
