@@ -5,6 +5,7 @@ import com.example.fivespringusedmarket.common.exception.ErrorCode;
 import com.example.fivespringusedmarket.member.entity.Member;
 import com.example.fivespringusedmarket.member.repository.MemberRepository;
 import com.example.fivespringusedmarket.product.dto.CreateProductRequest;
+import com.example.fivespringusedmarket.product.dto.DeleteProductResponse;
 import com.example.fivespringusedmarket.product.dto.ProductResponse;
 import com.example.fivespringusedmarket.product.dto.UpdateProductRequest;
 import com.example.fivespringusedmarket.product.dto.ProductListItemResponse;
@@ -74,6 +75,25 @@ public class ProductService {
         List<ProductImage> images = replaceImages(product, request.images());
 
         return ProductResponse.of(product, images);
+    }
+
+    @Transactional
+    public DeleteProductResponse deleteProduct(Long memberId, Long productId) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new CustomException(ErrorCode.PRODUCT_NOT_FOUND));
+
+        if (!product.isOwnedBy(memberId)) {
+            throw new CustomException(ErrorCode.ACCESS_DENIED);
+        }
+
+        if (product.isReserved()) {
+            throw new CustomException(ErrorCode.CANNOT_DELETE_RESERVED_PRODUCT);
+        }
+
+        // 실제 삭제 대신 상태를 DELETE로 변경해 소프트 삭제를 처리한다.
+        product.updateStatus(ProductStatus.DELETE);
+
+        return new DeleteProductResponse("상품이 삭제되었습니다.", productId);
     }
 
     @Transactional(readOnly = true)
