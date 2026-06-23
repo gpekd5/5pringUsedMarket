@@ -2,6 +2,8 @@ package com.example.fivespringusedmarket.common.exception;
 
 import com.example.fivespringusedmarket.common.response.ApiResponse;
 import jakarta.validation.ConstraintViolationException;
+import java.util.Locale;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -33,10 +35,35 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.fail(ErrorCode.INVALID_REQUEST));
     }
 
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDataIntegrityViolationException(
+            DataIntegrityViolationException exception
+    ) {
+        // DB unique 제약에서 발생한 중복 오류도 공통 ErrorCode로 변환한다.
+        ErrorCode errorCode = resolveDataIntegrityErrorCode(exception);
+        return ResponseEntity.status(errorCode.getHttpStatus())
+                .body(ApiResponse.fail(errorCode));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleException(Exception exception) {
         // 예상하지 못한 예외는 내부 서버 오류로 응답한다.
         return ResponseEntity.status(ErrorCode.INTERNAL_SERVER_ERROR.getHttpStatus())
                 .body(ApiResponse.fail(ErrorCode.INTERNAL_SERVER_ERROR));
+    }
+
+    private ErrorCode resolveDataIntegrityErrorCode(DataIntegrityViolationException exception) {
+        String message = exception.getMostSpecificCause().getMessage();
+        String lowerCaseMessage = message == null ? "" : message.toLowerCase(Locale.ROOT);
+
+        if (lowerCaseMessage.contains("uk_member_nickname") || lowerCaseMessage.contains("nickname")) {
+            return ErrorCode.DUPLICATED_NICKNAME;
+        }
+
+        if (lowerCaseMessage.contains("uk_member_email") || lowerCaseMessage.contains("email")) {
+            return ErrorCode.DUPLICATED_EMAIL;
+        }
+
+        return ErrorCode.INVALID_REQUEST;
     }
 }

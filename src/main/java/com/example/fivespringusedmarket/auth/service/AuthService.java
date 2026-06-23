@@ -9,6 +9,8 @@ import com.example.fivespringusedmarket.common.exception.ErrorCode;
 import com.example.fivespringusedmarket.common.security.JwtUtil;
 import com.example.fivespringusedmarket.member.entity.Member;
 import com.example.fivespringusedmarket.member.repository.MemberRepository;
+import java.util.Locale;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,7 +42,7 @@ public class AuthService {
 
         String encodedPassword = passwordEncoder.encode(request.password());
         Member member = Member.create(request.email(), encodedPassword, request.nickname());
-        Member savedMember = memberRepository.save(member);
+        Member savedMember = saveMember(member);
 
         return new SignupResponse(savedMember.getId(), savedMember.getEmail(), savedMember.getNickname());
     }
@@ -68,5 +70,29 @@ public class AuthService {
         if (memberRepository.existsByNickname(nickname)) {
             throw new CustomException(ErrorCode.DUPLICATED_NICKNAME);
         }
+    }
+
+    private Member saveMember(Member member) {
+        try {
+            // 동시 회원가입 요청 시 DB unique 제약 위반을 서비스 예외로 변환하기 위해 즉시 flush한다.
+            return memberRepository.saveAndFlush(member);
+        } catch (DataIntegrityViolationException exception) {
+            throw resolveDuplicatedMemberException(exception);
+        }
+    }
+
+    private CustomException resolveDuplicatedMemberException(DataIntegrityViolationException exception) {
+        String message = exception.getMostSpecificCause().getMessage();
+        String lowerCaseMessage = message == null ? "" : message.toLowerCase(Locale.ROOT);
+
+        if (lowerCaseMessage.contains("uk_member_nickname") || lowerCaseMessage.contains("nickname")) {
+            return new CustomException(ErrorCode.DUPLICATED_NICKNAME);
+        }
+
+        if (lowerCaseMessage.contains("uk_member_email") || lowerCaseMessage.contains("email")) {
+            return new CustomException(ErrorCode.DUPLICATED_EMAIL);
+        }
+
+        return new CustomException(ErrorCode.INVALID_REQUEST);
     }
 }
