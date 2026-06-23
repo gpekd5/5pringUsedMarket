@@ -11,11 +11,11 @@
 
 | 도메인 | 주요 테이블 | 설명 |
 |---|---|---|
-| 회원 | `member` | 서비스 사용자 및 관리자 계정 |
-| 상품 | `product`, `product_image`, `wish` | 중고 상품 게시글, 이미지, 찜 |
-| 검색 | `search_log` | 사용자 검색 기록 및 인기 검색어 집계 기반 |
-| 쿠폰 | `coupon`, `user_coupon` | 선착순 이벤트 쿠폰 및 사용자 발급 이력 |
-| 채팅 | `chat_room`, `chat_member`, `chat_message` | 거래 채팅 및 CS 문의 채팅 |
+| 회원 | `members` | 서비스 사용자 및 관리자 계정 |
+| 상품 | `products`, `product_images`, `wishes` | 중고 상품 게시글, 이미지, 찜 |
+| 검색 | `search_logs` | 사용자 검색 기록 및 인기 검색어 집계 기반 |
+| 쿠폰 | `coupons`, `user_coupons` | 선착순 이벤트 쿠폰 및 사용자 발급 이력 |
+| 채팅 | `chat_rooms`, `chat_members`, `chat_messages` | 거래 채팅 및 CS 문의 채팅 |
 
 ---
 
@@ -73,7 +73,7 @@ public enum CsStatus {
 
 ## 3. 테이블별 상세 설계
 
-## 3.1 member
+## 3.1 members
 
 ### 역할
 
@@ -100,13 +100,13 @@ public enum CsStatus {
 ### 인덱스 추천
 
 ```sql
-CREATE UNIQUE INDEX uk_member_email ON member(email);
-CREATE UNIQUE INDEX uk_member_nickname ON member(nickname);
+CREATE UNIQUE INDEX uk_members_email ON members(email);
+CREATE UNIQUE INDEX uk_members_nickname ON members(nickname);
 ```
 
 ---
 
-## 3.2 product
+## 3.2 products
 
 ### 역할
 
@@ -157,9 +157,9 @@ SOLD -> DELETED
 검색/목록 조회 성능을 위해 다음 인덱스를 우선 고려한다.
 
 ```sql
-CREATE INDEX idx_product_status_created_at ON product(status, created_at);
-CREATE INDEX idx_product_category_status_created_at ON product(category, status, created_at);
-CREATE INDEX idx_product_member_status ON product(member_id, status);
+CREATE INDEX idx_products_status_created_at ON products(status, created_at);
+CREATE INDEX idx_products_category_status_created_at ON products(category, status, created_at);
+CREATE INDEX idx_products_member_status ON products(member_id, status);
 ```
 
 상품명 LIKE 검색은 다음 조건을 기준으로 한다.
@@ -172,7 +172,7 @@ WHERE title LIKE CONCAT('%', :keyword, '%')
 
 ---
 
-## 3.3 product_image
+## 3.3 product_images
 
 ### 역할
 
@@ -197,12 +197,12 @@ WHERE title LIKE CONCAT('%', :keyword, '%')
 ### 제약조건 추천
 
 ```sql
-CREATE INDEX idx_product_image_product_sort ON product_image(product_id, sort_order);
+CREATE INDEX idx_product_images_product_sort ON product_images(product_id, sort_order);
 ```
 
 ---
 
-## 3.4 wish
+## 3.4 wishes
 
 ### 역할
 
@@ -225,13 +225,13 @@ CREATE INDEX idx_product_image_product_sort ON product_image(product_id, sort_or
 ### 제약조건
 
 ```sql
-CREATE UNIQUE INDEX uk_wish_member_product ON wish(member_id, product_id);
-CREATE INDEX idx_wish_product ON wish(product_id);
+CREATE UNIQUE INDEX uk_wishes_member_product ON wishes(member_id, product_id);
+CREATE INDEX idx_wishes_product ON wishes(product_id);
 ```
 
 ---
 
-## 3.5 search_log
+## 3.5 search_logs
 
 ### 역할
 
@@ -250,18 +250,18 @@ CREATE INDEX idx_wish_product ON wish(product_id);
 
 - 상품 검색 시 검색어를 저장한다.
 - 인기 검색어는 DB 집계보다 Redis ZSet 사용을 우선한다.
-- `search_log`는 검색 이력 조회, 분석, Redis 복구용으로 사용한다.
+- `search_logs`는 검색 이력 조회, 분석, Redis 복구용으로 사용한다.
 
 ### 인덱스 추천
 
 ```sql
-CREATE INDEX idx_search_log_keyword_created_at ON search_log(keyword, created_at);
-CREATE INDEX idx_search_log_member_created_at ON search_log(member_id, created_at);
+CREATE INDEX idx_search_logs_keyword_created_at ON search_logs(keyword, created_at);
+CREATE INDEX idx_search_logs_member_created_at ON search_logs(member_id, created_at);
 ```
 
 ---
 
-## 3.6 coupon
+## 3.6 coupons
 
 ### 역할
 
@@ -289,7 +289,7 @@ CREATE INDEX idx_search_log_member_created_at ON search_log(member_id, created_a
 
 ---
 
-## 3.7 user_coupon
+## 3.7 user_coupons
 
 ### 역할
 
@@ -316,9 +316,9 @@ CREATE INDEX idx_search_log_member_created_at ON search_log(member_id, created_a
 ### 제약조건
 
 ```sql
-CREATE UNIQUE INDEX uk_user_coupon_member_coupon ON user_coupon(member_id, coupon_id);
-CREATE UNIQUE INDEX uk_user_coupon_code ON user_coupon(code);
-CREATE INDEX idx_user_coupon_member ON user_coupon(member_id);
+CREATE UNIQUE INDEX uk_user_coupons_member_coupon ON user_coupons(member_id, coupon_id);
+CREATE UNIQUE INDEX uk_user_coupons_code ON user_coupons(code);
+CREATE INDEX idx_user_coupons_member ON user_coupons(member_id);
 ```
 
 ### 동시성 처리 기준
@@ -332,7 +332,7 @@ CREATE INDEX idx_user_coupon_member ON user_coupon(member_id);
 4. 중복 발급 여부 검증
 5. 발급 수량 검증
 6. issued_qty 증가
-7. user_coupon 저장
+7. user_coupons 저장
 8. Lock 해제
 ```
 
@@ -340,7 +340,7 @@ CREATE INDEX idx_user_coupon_member ON user_coupon(member_id);
 
 ---
 
-## 3.8 chat_room
+## 3.8 chat_rooms
 
 ### 역할
 
@@ -364,8 +364,8 @@ CREATE INDEX idx_user_coupon_member ON user_coupon(member_id);
 
 - `type = TRADE`이면 `product_id`가 필요하다.
 - 구매자와 판매자 간 채팅방은 같은 조합으로 중복 생성되면 안 된다.
-- 단, 현재 `chat_room`만으로는 buyer/seller 중복을 직접 막기 어렵다.
-- 중복 방지는 애플리케이션 로직 + `chat_member` 조회로 처리한다.
+- 단, 현재 `chat_rooms`만으로는 buyer/seller 중복을 직접 막기 어렵다.
+- 중복 방지는 애플리케이션 로직 + `chat_members` 조회로 처리한다.
 
 #### CS 문의 채팅방
 
@@ -391,14 +391,14 @@ IN_PROGRESS -> WAITING
 ### 인덱스 추천
 
 ```sql
-CREATE INDEX idx_chat_room_type_created_at ON chat_room(type, created_at);
-CREATE INDEX idx_chat_room_product ON chat_room(product_id);
-CREATE INDEX idx_chat_room_cs_status ON chat_room(cs_status);
+CREATE INDEX idx_chat_rooms_type_created_at ON chat_rooms(type, created_at);
+CREATE INDEX idx_chat_rooms_product ON chat_rooms(product_id);
+CREATE INDEX idx_chat_rooms_cs_status ON chat_rooms(cs_status);
 ```
 
 ---
 
-## 3.9 chat_member
+## 3.9 chat_members
 
 ### 역할
 
@@ -424,14 +424,14 @@ CREATE INDEX idx_chat_room_cs_status ON chat_room(cs_status);
 ### 제약조건
 
 ```sql
-CREATE UNIQUE INDEX uk_chat_member_room_member ON chat_member(chat_room_id, member_id);
-CREATE INDEX idx_chat_member_member ON chat_member(member_id);
-CREATE INDEX idx_chat_member_room_role ON chat_member(chat_room_id, member_role);
+CREATE UNIQUE INDEX uk_chat_members_room_member ON chat_members(chat_room_id, member_id);
+CREATE INDEX idx_chat_members_member ON chat_members(member_id);
+CREATE INDEX idx_chat_members_room_role ON chat_members(chat_room_id, member_role);
 ```
 
 ---
 
-## 3.10 chat_message
+## 3.10 chat_messages
 
 ### 역할
 
@@ -459,7 +459,7 @@ CREATE INDEX idx_chat_member_room_role ON chat_member(chat_room_id, member_role)
 
 ```sql
 SELECT *
-FROM chat_message
+FROM chat_messages
 WHERE chat_room_id = :roomId
   AND id < :lastMessageId
 ORDER BY id DESC
@@ -469,8 +469,8 @@ LIMIT :size;
 ### 인덱스 추천
 
 ```sql
-CREATE INDEX idx_chat_message_room_id_id ON chat_message(chat_room_id, id);
-CREATE INDEX idx_chat_message_member_id ON chat_message(member_id);
+CREATE INDEX idx_chat_messages_room_id_id ON chat_messages(chat_room_id, id);
+CREATE INDEX idx_chat_messages_member_id ON chat_messages(member_id);
 ```
 
 ---
@@ -609,12 +609,12 @@ SUBSCRIBE: /sub/chat/rooms/{roomId}
 ## 6.2 기능 구현 순서 추천
 
 ```text
-1. member/auth
-2. product/product_image
-3. wish
-4. search/search_log
-5. coupon/user_coupon + Redis Lock
-6. chat_room/chat_member/chat_message
+1. members/auth
+2. products/product_images
+3. wishes
+4. search/search_logs
+5. coupons/user_coupons + Redis Lock
+6. chat_rooms/chat_members/chat_messages
 7. WebSocket/STOMP 인증
 8. Redis Pub/Sub
 9. 배포/CI-CD
@@ -627,7 +627,7 @@ SUBSCRIBE: /sub/chat/rooms/{roomId}
 Codex는 코드를 생성할 때 다음 규칙을 지킨다.
 
 1. ERD에 없는 테이블을 임의로 추가하지 않는다.
-2. `coupon.issued_qty`를 사용해 현재 발급 수량을 관리한다.
+2. `coupons.issued_qty`를 사용해 현재 발급 수량을 관리한다.
 3. 구매 요청, 주문, 결제 테이블은 생성하지 않는다.
 4. 거래 의사는 채팅으로만 처리한다.
 5. 상품 거래 상태는 `ProductStatus`로 관리한다.
@@ -649,21 +649,21 @@ Codex는 코드를 생성할 때 다음 규칙을 지킨다.
 
 | 항목 | 이유 |
 |---|---|
-| `coupon.issued_qty` | 선착순 수량 검증과 동시성 테스트에 사용 |
-| `member.email` unique | 로그인 식별자 중복 방지 |
-| `wish(member_id, product_id)` unique | 중복 찜 방지 |
-| `user_coupon(member_id, coupon_id)` unique | 쿠폰 중복 발급 방지 |
-| `chat_member(chat_room_id, member_id)` unique | 채팅방 중복 참여 방지 |
-| `chat_message(chat_room_id, id)` index | 커서 기반 메시지 조회 성능 확보 |
+| `coupons.issued_qty` | 선착순 수량 검증과 동시성 테스트에 사용 |
+| `members.email` unique | 로그인 식별자 중복 방지 |
+| `wishes(member_id, product_id)` unique | 중복 찜 방지 |
+| `user_coupons(member_id, coupon_id)` unique | 쿠폰 중복 발급 방지 |
+| `chat_members(chat_room_id, member_id)` unique | 채팅방 중복 참여 방지 |
+| `chat_messages(chat_room_id, id)` index | 커서 기반 메시지 조회 성능 확보 |
 
 ### 8.2 선택 반영
 
 | 항목 | 판단 |
 |---|---|
 | 거래 채팅방 buyer/seller 컬럼 추가 | 중복 거래 채팅방 방지를 DB에서 강하게 막고 싶으면 추가 |
-| `product.view_count` | 인기 상품 기능을 할 때만 추가 |
-| `chat_room.last_message_id` | 채팅방 목록에서 최근 메시지 미리보기가 필요하면 추가 |
-| `chat_room.deleted_at` | 채팅방 나가기/숨김 정책을 세밀하게 할 때 추가 |
+| `products.view_count` | 인기 상품 기능을 할 때만 추가 |
+| `chat_rooms.last_message_id` | 채팅방 목록에서 최근 메시지 미리보기가 필요하면 추가 |
+| `chat_rooms.deleted_at` | 채팅방 나가기/숨김 정책을 세밀하게 할 때 추가 |
 
 현재 단계에서는 과한 확장은 피한다. 핵심은 검색 캐싱, 쿠폰 동시성, 채팅, 배포 산출물을 완성하는 것이다.
 

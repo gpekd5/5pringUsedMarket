@@ -11,7 +11,7 @@
 # 최종 패키지 구조
 
 ```text
-com.fivespring.usedmarket
+com.example.fivespringusedmarket
 
 ├── common
 │   ├── config
