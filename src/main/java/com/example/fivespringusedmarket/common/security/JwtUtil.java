@@ -108,6 +108,11 @@ public class JwtUtil {
         return remainingMillis;
     }
 
+    public void validateAccessToken(String accessToken) {
+        Claims claims = parseAccessTokenClaims(accessToken);
+        validateTokenType(claims, ACCESS_TOKEN_TYPE, ErrorCode.INVALID_TOKEN);
+    }
+
     public boolean isValidToken(String token) {
         try {
             parseClaims(token);
