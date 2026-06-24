@@ -1,9 +1,10 @@
 package com.example.fivespringusedmarket.auth.controller;
 
 import com.example.fivespringusedmarket.auth.dto.LoginRequest;
-import com.example.fivespringusedmarket.auth.dto.LoginResponse;
+import com.example.fivespringusedmarket.auth.dto.ReissueRequest;
 import com.example.fivespringusedmarket.auth.dto.SignupRequest;
 import com.example.fivespringusedmarket.auth.dto.SignupResponse;
+import com.example.fivespringusedmarket.auth.dto.TokenResponse;
 import com.example.fivespringusedmarket.auth.service.AuthService;
 import com.example.fivespringusedmarket.common.response.ApiResponse;
 import jakarta.validation.Valid;
@@ -33,8 +34,14 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse<LoginResponse>> login(@Valid @RequestBody LoginRequest request) {
-        LoginResponse response = authService.login(request);
+    public ResponseEntity<ApiResponse<TokenResponse>> login(@Valid @RequestBody LoginRequest request) {
+        TokenResponse response = authService.login(request);
         return ResponseEntity.ok(ApiResponse.success("로그인에 성공했습니다.", response));
+    }
+
+    @PostMapping("/reissue")
+    public ResponseEntity<ApiResponse<TokenResponse>> reissue(@Valid @RequestBody ReissueRequest request) {
+        TokenResponse response = authService.reissue(request);
+        return ResponseEntity.ok(ApiResponse.success("토큰이 재발급되었습니다.", response));
     }
 }

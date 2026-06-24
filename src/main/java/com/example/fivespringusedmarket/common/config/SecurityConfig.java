@@ -40,7 +40,12 @@ public class SecurityConfig {
                         // WebSocket은 STOMP ChannelInterceptor에서 자체 인증하므로 HTTP 레벨에서는 열어둔다.
                         .requestMatchers("/ws-chat/**").permitAll()
                         .requestMatchers("/error").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/auth/signup", "/api/auth/login").permitAll()
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/auth/signup",
+                                "/api/auth/login",
+                                "/api/auth/reissue"
+                        ).permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/products").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/products/{productId}").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/members/{memberId}/profile").permitAll()

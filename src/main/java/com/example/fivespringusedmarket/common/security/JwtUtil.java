@@ -82,6 +82,18 @@ public class JwtUtil {
         return refreshTokenExpiration;
     }
 
+    public Long extractMemberIdFromRefreshToken(String refreshToken) {
+        Claims claims = parseRefreshTokenClaims(refreshToken);
+        validateTokenType(claims, REFRESH_TOKEN_TYPE);
+
+        Long memberId = claims.get(MEMBER_ID_CLAIM, Long.class);
+        if (memberId == null) {
+            throw new CustomException(ErrorCode.INVALID_REFRESH_TOKEN);
+        }
+
+        return memberId;
+    }
+
     public boolean isValidToken(String token) {
         try {
             parseClaims(token);
@@ -111,6 +123,30 @@ public class JwtUtil {
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
+    }
+
+    private Claims parseRefreshTokenClaims(String refreshToken) {
+        try {
+            return parseClaims(refreshToken);
+        } catch (ExpiredJwtException exception) {
+            throw new CustomException(ErrorCode.EXPIRED_REFRESH_TOKEN);
+        } catch (JwtException | IllegalArgumentException exception) {
+            throw new CustomException(ErrorCode.INVALID_REFRESH_TOKEN);
+        } catch (CustomException exception) {
+            if (exception.getErrorCode() == ErrorCode.EXPIRED_TOKEN) {
+                throw new CustomException(ErrorCode.EXPIRED_REFRESH_TOKEN);
+            }
+
+            throw new CustomException(ErrorCode.INVALID_REFRESH_TOKEN);
+        }
+    }
+
+    private void validateTokenType(Claims claims, String expectedTokenType) {
+        String tokenType = claims.get(TOKEN_TYPE_CLAIM, String.class);
+
+        if (!expectedTokenType.equals(tokenType)) {
+            throw new CustomException(ErrorCode.INVALID_REFRESH_TOKEN);
+        }
     }
 
     private SecretKey getSigningKey() {
