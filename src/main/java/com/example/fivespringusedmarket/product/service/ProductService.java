@@ -131,7 +131,7 @@ public class ProductService {
     @Transactional(readOnly = true)
     public ProductPageResponse getProducts(String category, String keyword, String status, Long sellerId, Pageable pageable) {
         ProductCategory categoryEnum = category != null ? parseCategory(category) : null;
-        ProductStatus statusEnum = status != null ? parseStatus(status) : null;
+        ProductStatus statusEnum = status != null ? parseStatus(status) : ProductStatus.ON_SALE;
 
         // DELETED 상태는 공개 목록에서 조회할 수 없다.
         if (statusEnum == ProductStatus.DELETED) {
