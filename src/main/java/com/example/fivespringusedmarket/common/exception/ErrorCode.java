@@ -27,6 +27,7 @@ public enum ErrorCode {
     CHAT_COMPLETED(HttpStatus.BAD_REQUEST, "완료된 CS 채팅방에는 메시지를 전송할 수 없습니다."),
     CS_ALREADY_IN_PROGRESS(HttpStatus.CONFLICT, "이미 다른 관리자가 처리 중인 문의입니다."),
     INVALID_MESSAGE_TYPE(HttpStatus.BAD_REQUEST, "클라이언트에서 전송할 수 없는 메시지 타입입니다."),
+    ADMIN_CANNOT_CHAT(HttpStatus.BAD_REQUEST, "관리자는 구매/판매 채팅을 할수 없습니다."),
 
 
     // Product
