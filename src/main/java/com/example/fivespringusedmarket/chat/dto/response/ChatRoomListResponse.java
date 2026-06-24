@@ -15,7 +15,6 @@ public record ChatRoomListResponse(
         Long roomId,
         String type,
         String title,
-        String thumbnailUrl,
         String lastMessage,
         LocalDateTime lastMessageAt,
         long unreadCount,
@@ -40,10 +39,6 @@ public record ChatRoomListResponse(
                 ? ProductSummary.from(room.getProduct())
                 : null;
 
-        String thumbnailUrl = room.getType() == ChatRoomType.TRADE && room.getProduct() != null
-                ? room.getProduct().getThumbnailUrl()
-                : null;
-
         String csStatus = room.getType() == ChatRoomType.CS && room.getCsStatus() != null
                 ? room.getCsStatus().name()
                 : null;
@@ -52,7 +47,6 @@ public record ChatRoomListResponse(
                 room.getId(),
                 room.getType().name(),
                 room.getTitle(),
-                thumbnailUrl,
                 room.getLastMessageContent(),
                 room.getLastMessageAt(),
                 unreadCount,

@@ -13,13 +13,12 @@ public record TradeChatRoomCreateResponse(
         CounterpartSummary counterpart,
         LocalDateTime createdAt
 ) {
-    public record ProductDetail(Long id, String title, Integer price, String thumbnailUrl) {
+    public record ProductDetail(Long id, String title, int price) {
         public static ProductDetail from(Product product) {
             return new ProductDetail(
                     product.getId(),
                     product.getTitle(),
-                    product.getPrice(),
-                    product.getThumbnailUrl()
+                    product.getPrice()
             );
         }
     }

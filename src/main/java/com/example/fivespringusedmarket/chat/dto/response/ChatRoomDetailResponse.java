@@ -36,13 +36,12 @@ public record ChatRoomDetailResponse(
         }
     }
 
-    public record ProductDetail(Long id, String title, Integer price, String thumbnailUrl, String status) {
+    public record ProductDetail(Long id, String title, int price, String status) {
         public static ProductDetail from(com.example.fivespringusedmarket.product.entity.Product product) {
             return new ProductDetail(
                     product.getId(),
                     product.getTitle(),
                     product.getPrice(),
-                    product.getThumbnailUrl(),
                     product.getStatus().name()
             );
         }
