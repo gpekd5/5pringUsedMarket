@@ -737,13 +737,13 @@ COMPLETED
 
 ### Query Parameters
 
-| 필드 | 타입 | 필수 | 설명 |
-|---|---|---|---|
-| keyword | String | N | 검색 키워드 |
-| category | String | N | 상품 카테고리 |
-| sort | String | N | latest / price_asc / price_desc |
-| page | Integer | N | 기본값 0 |
-| size | Integer | N | 기본값 10 |
+| 필드 | 타입 | 필수 | 설명                                       |
+|---|---|---|------------------------------------------|
+| keyword | String | N | 검색 키워드                                   |
+| category | String | N | 상품 카테고리                                  |
+| sort | String | N | latest / oldest / price_asc / price_desc |
+| page | Integer | N | 기본값 0                                    |
+| size | Integer | N | 기본값 10                                   |
 
 ### 처리 정책
 
