@@ -49,7 +49,7 @@ public class ChatService {
             throw new CustomException(ErrorCode.PRODUCT_SOLD_OUT);
         }
 
-        Member seller = product.getSeller();
+        Member seller = chatRoomCommonMethod.getMemberOrThrow(product.getSeller().getId());
         Member buyer = chatRoomCommonMethod.getMemberOrThrow(buyerId);
         //관리자 구매제한
         if (buyer.getRole() == MemberRole.ADMIN) {
