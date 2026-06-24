@@ -15,6 +15,7 @@ import com.example.fivespringusedmarket.product.entity.ProductImage;
 import com.example.fivespringusedmarket.product.entity.ProductStatus;
 import com.example.fivespringusedmarket.product.repository.ProductImageRepository;
 import com.example.fivespringusedmarket.product.repository.ProductRepository;
+import com.example.fivespringusedmarket.search.repository.SearchLogRepository;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -43,12 +44,16 @@ class SearchServiceTest {
     @Autowired
     private ProductImageRepository productImageRepository;
 
+    @Autowired
+    private SearchLogRepository searchLogRepository;
+
     private Member seller;
 
     @BeforeEach
     void setUp() {
         productImageRepository.deleteAll();
         productRepository.deleteAll();
+        searchLogRepository.deleteAll();
         memberRepository.deleteAll();
 
         seller = memberRepository.saveAndFlush(
@@ -82,6 +87,7 @@ class SearchServiceTest {
 
         // when
         ProductPageResponse response = searchService.searchProductsV1(
+                seller,
                 "아이폰",
                 null,
                 null,
@@ -127,10 +133,11 @@ class SearchServiceTest {
                 ProductCategory.DIGITAL
         );
         reservedDigital.updateStatus(ProductStatus.RESERVED);
-        productRepository.saveAndFlush(reservedSports);
+        productRepository.saveAndFlush(reservedDigital);
 
         // when
         ProductPageResponse response = searchService.searchProductsV1(
+                seller,
                 null,
                 "SPORTS",
                 "RESERVED",
@@ -156,6 +163,7 @@ class SearchServiceTest {
 
         // when
         ProductPageResponse response = searchService.searchProductsV1(
+                seller,
                 null,
                 null,
                 null,
@@ -183,6 +191,7 @@ class SearchServiceTest {
 
         // when
         ProductPageResponse response = searchService.searchProductsV1(
+                seller,
                 "이미지",
                 null,
                 null,
@@ -198,9 +207,84 @@ class SearchServiceTest {
     }
 
     @Test
+    void loginUserKeywordSearchSavesSearchLog() {
+        // given
+        saveProduct(
+                "아이폰 15 팝니다",
+                "상태 좋습니다",
+                800000,
+                ProductCategory.DIGITAL
+        );
+
+        // when
+        searchService.searchProductsV1(
+                seller,
+                " 아이폰 ",
+                null,
+                null,
+                "LATEST",
+                PageRequest.of(0, 10)
+        );
+
+        // then
+        assertThat(searchLogRepository.findAll()).hasSize(1);
+        assertThat(searchLogRepository.findAll().get(0).getMember().getId()).isEqualTo(seller.getId());
+        assertThat(searchLogRepository.findAll().get(0).getKeyword()).isEqualTo("아이폰");
+    }
+
+    @Test
+    void guestKeywordSearchDoesNotSaveSearchLog() {
+        // given
+        saveProduct(
+                "아이폰 15 팝니다",
+                "상태 좋습니다",
+                800000,
+                ProductCategory.DIGITAL
+        );
+
+        // when
+        searchService.searchProductsV1(
+                null,
+                "아이폰",
+                null,
+                null,
+                "LATEST",
+                PageRequest.of(0, 10)
+        );
+
+        // then
+        assertThat(searchLogRepository.findAll()).isEmpty();
+    }
+
+    @Test
+    void blankKeywordDoesNotSaveSearchLog() {
+        // given
+        saveProduct(
+                "아이폰 15 팝니다",
+                "상태 좋습니다",
+                800000,
+                ProductCategory.DIGITAL
+        );
+
+        // when
+        searchService.searchProductsV1(
+                seller,
+                "   ",
+                null,
+                null,
+                "LATEST",
+                PageRequest.of(0, 10)
+        );
+
+        // then
+        assertThat(searchLogRepository.findAll()).isEmpty();
+    }
+
+    @Test
     void invalidCategoryThrowsCustomException() {
         // when & then
         assertThatThrownBy(() -> searchService.searchProductsV1(
+                seller,
                 null,
                 "PHONE",
                 null,
@@ -216,6 +300,7 @@ class SearchServiceTest {
     void invalidSortThrowsCustomException() {
         // when & then
         assertThatThrownBy(() -> searchService.searchProductsV1(
+                seller,
                 null,
                 null,
                 null,
