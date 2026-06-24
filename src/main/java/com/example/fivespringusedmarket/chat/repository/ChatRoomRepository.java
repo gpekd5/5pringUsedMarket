@@ -1,9 +1,11 @@
 package com.example.fivespringusedmarket.chat.repository;
 
 import com.example.fivespringusedmarket.chat.entity.ChatRoom;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -51,4 +53,12 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
             @Param("memberId") Long memberId,
             Pageable pageable
     );
+
+    /*
+      CS 채팅방을 비관적 쓰기 락으로 조회
+      관리자 동시 입장 시 한 명만 처리되도록 행 수준 락을 건다
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT cr FROM ChatRoom cr WHERE cr.id = :roomId")
+    Optional<ChatRoom> findByIdWithLock(@Param("roomId") Long roomId);
 }
