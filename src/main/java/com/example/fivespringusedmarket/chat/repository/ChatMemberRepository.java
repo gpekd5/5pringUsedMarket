@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface ChatMemberRepository extends JpaRepository<ChatMember,Long> {
 
@@ -20,6 +21,8 @@ public interface ChatMemberRepository extends JpaRepository<ChatMember,Long> {
     List<ChatMember> findByChatRoomIdInWithMember(@Param("roomIds") List<Long> roomIds);
 
     boolean existsByChatRoomIdAndMemberId(Long chatRoomId, Long memberId);
+
+    Optional<ChatMember> findByChatRoomIdAndMemberId(Long chatRoomId, Long memberId);
 
     @Query("SELECT cm FROM ChatMember cm JOIN FETCH cm.member WHERE cm.chatRoom.id = :roomId")
     List<ChatMember> findByChatRoomIdWithMember(@Param("roomId") Long roomId);

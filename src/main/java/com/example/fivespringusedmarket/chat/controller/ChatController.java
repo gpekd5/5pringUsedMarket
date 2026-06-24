@@ -22,7 +22,7 @@ public class ChatController {
 
     private final ChatService chatService;
 
-    @PostMapping
+    @PostMapping("/trade")
     public ResponseEntity<ApiResponse<TradeChatRoomCreateResponse>> createTradeRoom(
             @AuthenticationPrincipal AuthMember authMember,
             @Valid @RequestBody TradeChatRoomCreateRequest request
@@ -86,5 +86,17 @@ public class ChatController {
                 authMember.memberId(), roomId, lastMessageId, size
         );
         return ResponseEntity.ok(ApiResponse.success("메시지 목록 조회 성공", response));
+    }
+    /*
+      채팅방 읽음 처리.
+      unreadCount 0 리셋 및 lastReadMessageId 갱신.
+     */
+    @PatchMapping("/{roomId}/read")
+    public ResponseEntity<ApiResponse<Void>> markAsRead(
+            @AuthenticationPrincipal AuthMember authMember,
+            @PathVariable Long roomId
+    ) {
+        chatService.markAsRead(authMember.memberId(), roomId);
+        return ResponseEntity.ok(ApiResponse.success("읽음 처리 완료", null));
     }
 }

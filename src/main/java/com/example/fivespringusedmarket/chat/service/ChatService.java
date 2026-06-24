@@ -158,6 +158,23 @@ public class ChatService {
         );
     }
 
+    /*
+      채팅방 읽음 처리
+      현재 사용자의 unreadCount를 0으로 리셋하고 lastReadMessageId를 최신 메시지 ID로 갱신한다.
+      메시지가 없으면 아무것도 하지 않는다.
+     */
+    @Transactional
+    public void markAsRead(Long memberId, Long roomId) {
+        ChatMember chatMember = chatMemberRepository.findByChatRoomIdAndMemberId(roomId, memberId)
+                .orElseThrow(() -> new CustomException(ErrorCode.CHAT_ACCESS_DENIED));
+
+        chatMessageRepository.findTopByChatRoomIdOrderByIdDesc(roomId)
+                .ifPresent(latestMessage -> {
+                    chatMember.updateLastReadMessageId(latestMessage.getId());
+                    chatMember.resetUnreadCount();
+                });
+    }
+
     private Product getProductOrThrow(Long productId) {
         return productRepository.findById(productId)
                 .orElseThrow(() -> new CustomException(ErrorCode.PRODUCT_NOT_FOUND));

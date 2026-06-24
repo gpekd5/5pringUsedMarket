@@ -7,11 +7,12 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> {
 
-    // 안읽음 수 계산: lastReadMessageId 이후 메시지 개수
-    long countByChatRoomIdAndIdGreaterThan(Long chatRoomId, Long lastReadMessageId);
+    // 읽음 처리 시 lastReadMessageId 갱신 기준
+    Optional<ChatMessage> findTopByChatRoomIdOrderByIdDesc(Long chatRoomId);
 
     // 커서 기반 페이징: lastMessageId보다 작은 메시지를 최신순으로 조회한다.
     // sender LEFT JOIN FETCH로 N+1 방지. size+1개 조회해서 hasNext 여부를 판단한다.
