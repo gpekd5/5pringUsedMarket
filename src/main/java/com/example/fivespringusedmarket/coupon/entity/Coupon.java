@@ -46,4 +46,20 @@ public class Coupon {
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    public boolean isEventNotStarted(LocalDateTime now) {
+        return now.isBefore(eventStartAt);
+    }
+
+    public boolean isEventEnded(LocalDateTime now) {
+        return now.isAfter(eventEndAt);
+    }
+
+    public boolean hasStock() {
+        return issuedQty < totalQty;
+    }
+
+    public void incrementIssuedQty() {
+        this.issuedQty++;
+    }
 }
