@@ -4,6 +4,7 @@ import com.example.fivespringusedmarket.common.response.ApiResponse;
 import com.example.fivespringusedmarket.common.security.AuthMember;
 import com.example.fivespringusedmarket.member.dto.MemberMeRequest;
 import com.example.fivespringusedmarket.member.dto.MemberMeResponse;
+import com.example.fivespringusedmarket.member.dto.MemberMeUpdateResponse;
 import com.example.fivespringusedmarket.member.service.MemberService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -32,14 +33,13 @@ public class MemberController {
     }
 
     @PatchMapping("/me")
-    public ResponseEntity<ApiResponse<MemberMeResponse>> updateMyInfo(
+    public ResponseEntity<ApiResponse<MemberMeUpdateResponse>> updateMyInfo(
             @AuthenticationPrincipal AuthMember authMember,
             @Valid @RequestBody MemberMeRequest request
     ) {
-        MemberMeResponse response = memberService.updateInfo(
+        MemberMeUpdateResponse response = memberService.updateInfo(
                 authMember.memberId(),
-                request.nickname(),
-                request.password()
+                request.nickname()
         );
         return ResponseEntity.ok(ApiResponse.success("내 정보가 수정되었습니다.", response));
     }

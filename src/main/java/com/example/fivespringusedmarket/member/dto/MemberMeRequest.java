@@ -4,9 +4,6 @@ import jakarta.validation.constraints.Size;
 
 public record MemberMeRequest(
         @Size(max = 50)
-        String nickname,
-
-        @Size(max = 255)
-        String password
+        String nickname
 ) {
 }

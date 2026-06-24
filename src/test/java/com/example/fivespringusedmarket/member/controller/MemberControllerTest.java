@@ -16,7 +16,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
@@ -40,9 +39,6 @@ class MemberControllerTest {
 
     @Autowired
     private JwtUtil jwtUtil;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
 
     @BeforeEach
     void setUp() {
@@ -92,16 +88,15 @@ class MemberControllerTest {
     }
 
     @Test
-    void updateMyInfoChangesNicknameAndPassword() throws Exception {
+    void updateMyInfoChangesNicknameOnly() throws Exception {
         // given
         Member member = memberRepository.saveAndFlush(
-                Member.create("update-member@test.com", passwordEncoder.encode("oldPassword"), "변경전")
+                Member.create("update-member@test.com", "encoded-old-password", "변경전")
         );
         String accessToken = jwtUtil.createAccessToken(member);
         String requestBody = """
                 {
-                  "nickname": "변경후",
-                  "password": "newPassword"
+                  "nickname": "변경후"
                 }
                 """;
 
@@ -116,12 +111,12 @@ class MemberControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.message").value("내 정보가 수정되었습니다."))
                 .andExpect(jsonPath("$.data.memberId").value(member.getId()))
-                .andExpect(jsonPath("$.data.email").value("update-member@test.com"))
+                .andExpect(jsonPath("$.data.email").doesNotExist())
                 .andExpect(jsonPath("$.data.nickname").value("변경후"));
 
         Optional<Member> updatedMember = memberRepository.findById(member.getId());
         assertThat(updatedMember).isPresent();
         assertThat(updatedMember.get().getNickname()).isEqualTo("변경후");
-        assertThat(passwordEncoder.matches("newPassword", updatedMember.get().getPassword())).isTrue();
+        assertThat(updatedMember.get().getPassword()).isEqualTo("encoded-old-password");
     }
 }
