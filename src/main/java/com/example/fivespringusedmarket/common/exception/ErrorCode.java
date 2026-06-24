@@ -22,7 +22,7 @@ public enum ErrorCode {
     CHAT_ROOM_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 채팅방입니다."),
     CHAT_ACCESS_DENIED(HttpStatus.FORBIDDEN, "채팅방 참여자가 아닙니다."),
     NOT_CS_ROOM(HttpStatus.CONFLICT, "CS 타입이 아닌 채팅방입니다."),
-    INVALID_CS_STATUS_TRANSITION(HttpStatus.BAD_REQUEST, "유효하지 않은 CS 상태 전이입니다."),
+    INVALID_STATUS_TRANSITION(HttpStatus.BAD_REQUEST, "유효하지 않은 CS 상태 전이입니다."),
     INVALID_CHAT_ROOM_TYPE(HttpStatus.BAD_REQUEST, "type은 TRADE 또는 CS만 허용됩니다."),
     CHAT_COMPLETED(HttpStatus.BAD_REQUEST, "완료된 CS 채팅방에는 메시지를 전송할 수 없습니다."),
     CS_ALREADY_IN_PROGRESS(HttpStatus.CONFLICT, "이미 다른 관리자가 처리 중인 문의입니다."),
@@ -38,7 +38,7 @@ public enum ErrorCode {
     INVALID_SEARCH_SORT_TYPE(HttpStatus.BAD_REQUEST, "유효하지 않은 정렬입니다."),
 
 	INVALID_STATUS(HttpStatus.BAD_REQUEST, "유효하지 않은 상태 값입니다."),
-	INVALID_STATUS_TRANSITION(HttpStatus.BAD_REQUEST, "허용되지 않는 상태 전이입니다.");
+	INVALID_CS_STATUS_TRANSITION(HttpStatus.BAD_REQUEST, "허용되지 않는 상태 전이입니다.");
 
     private final HttpStatus httpStatus;
     private final String message;
