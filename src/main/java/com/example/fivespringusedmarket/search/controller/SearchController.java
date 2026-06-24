@@ -28,7 +28,7 @@ public class SearchController {
             @RequestParam(required = false) String category,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String sort,
-            @PageableDefault(size = 20) Pageable pageable
+            @PageableDefault(size = 10) Pageable pageable
             ){
         ProductPageResponse response = searchService.searchProductsV1(keyword, category, status, sort, pageable);
         return ResponseEntity.ok(ApiResponse.success(response));
