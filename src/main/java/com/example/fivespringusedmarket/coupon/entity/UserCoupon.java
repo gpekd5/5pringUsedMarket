@@ -52,6 +52,18 @@ public class UserCoupon {
     @Column
     private LocalDateTime usedAt;
 
+    public boolean isUsed() {
+        return usedAt != null;
+    }
+
+    public boolean isExpired() {
+        return LocalDateTime.now().isAfter(expireAt);
+    }
+
+    public void use() {
+        this.usedAt = LocalDateTime.now();
+    }
+
     public static UserCoupon issue(Member member, Coupon coupon, String code) {
         UserCoupon userCoupon = new UserCoupon();
         userCoupon.member = member;
