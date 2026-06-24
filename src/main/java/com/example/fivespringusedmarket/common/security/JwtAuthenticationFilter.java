@@ -1,6 +1,8 @@
 package com.example.fivespringusedmarket.common.security;
 
+import com.example.fivespringusedmarket.auth.repository.AccessTokenBlacklistRepository;
 import com.example.fivespringusedmarket.common.exception.CustomException;
+import com.example.fivespringusedmarket.common.exception.ErrorCode;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -26,15 +28,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtUtil jwtUtil;
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
     private final BearerTokenResolver bearerTokenResolver;
+    private final AccessTokenBlacklistRepository accessTokenBlacklistRepository;
 
     public JwtAuthenticationFilter(
             JwtUtil jwtUtil,
             JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint,
-            BearerTokenResolver bearerTokenResolver
+            BearerTokenResolver bearerTokenResolver,
+            AccessTokenBlacklistRepository accessTokenBlacklistRepository
     ) {
         this.jwtUtil = jwtUtil;
         this.jwtAuthenticationEntryPoint = jwtAuthenticationEntryPoint;
         this.bearerTokenResolver = bearerTokenResolver;
+        this.accessTokenBlacklistRepository = accessTokenBlacklistRepository;
     }
 
     @Override
@@ -62,10 +67,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     private void authenticate(String token) {
-        jwtUtil.isValidToken(token);
-        AuthMember authMember = jwtUtil.extractAuthMember(token);
+        jwtUtil.validateAccessToken(token);
 
-        // 추후 로그아웃 구현 시 이 위치에 Access Token Blacklist 검증을 추가한다.
+        if (accessTokenBlacklistRepository.exists(token)) {
+            throw new CustomException(ErrorCode.BLACKLIST_TOKEN);
+        }
+
+        AuthMember authMember = jwtUtil.extractAuthMember(token);
         UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                 authMember,
                 null,
