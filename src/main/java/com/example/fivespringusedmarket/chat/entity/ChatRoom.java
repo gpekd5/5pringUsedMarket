@@ -81,6 +81,21 @@ public class ChatRoom extends BaseEntity {
         return room;
     }
 
+    /*
+     CS 상태를 전이한다.
+     허용 전이: WAITING→IN_PROGRESS, IN_PROGRESS→WAITING, IN_PROGRESS→COMPLETED
+     허용하지 않는 전이: WAITING→COMPLETED, COMPLETED→모든 상태
+     */
+    public void changeCsStatus(CsStatus newStatus) {
+        if (this.csStatus == CsStatus.COMPLETED) {
+            throw new CustomException(ErrorCode.INVALID_STATUS_TRANSITION);
+        }
+        if (this.csStatus == CsStatus.WAITING && newStatus == CsStatus.COMPLETED) {
+            throw new CustomException(ErrorCode.INVALID_STATUS_TRANSITION);
+        }
+        this.csStatus = newStatus;
+    }
+
     //메시지가 전송될 때마다 lastMessageAt을 갱신
     public void updateLastMessage(String content, LocalDateTime sentAt) {
         this.lastMessageContent = content;
