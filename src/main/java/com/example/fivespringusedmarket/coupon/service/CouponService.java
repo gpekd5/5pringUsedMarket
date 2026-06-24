@@ -4,6 +4,7 @@ import com.example.fivespringusedmarket.common.exception.CustomException;
 import com.example.fivespringusedmarket.common.exception.ErrorCode;
 import com.example.fivespringusedmarket.coupon.dto.CouponResponse;
 import com.example.fivespringusedmarket.coupon.dto.IssueCouponResponse;
+import com.example.fivespringusedmarket.coupon.dto.UserCouponResponse;
 import com.example.fivespringusedmarket.coupon.entity.Coupon;
 import com.example.fivespringusedmarket.coupon.entity.UserCoupon;
 import com.example.fivespringusedmarket.coupon.repository.CouponRepository;
@@ -61,5 +62,16 @@ public class CouponService {
         userCouponRepository.save(userCoupon);
 
         return IssueCouponResponse.from(userCoupon);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<UserCouponResponse> getMyCoupons(Long memberId, Boolean used, Pageable pageable) {
+        if (used == null) {
+            return userCouponRepository.findByMemberId(memberId, pageable).map(UserCouponResponse::from);
+        }
+        if (used) {
+            return userCouponRepository.findByMemberIdAndUsedAtIsNotNull(memberId, pageable).map(UserCouponResponse::from);
+        }
+        return userCouponRepository.findByMemberIdAndUsedAtIsNull(memberId, pageable).map(UserCouponResponse::from);
     }
 }
