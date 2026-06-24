@@ -41,8 +41,11 @@
 
 ### 인증/인가
 
-- Access Token + Refresh Token 구조
+- Access Token 30분 + Refresh Token 14일 구조
 - Refresh Token은 Redis 저장
+- Refresh Token은 Redis Whitelist 방식으로 관리
+- 토큰 재발급 시 Refresh Token Rotation 적용
+- 재발급 성공 시 Redis Refresh Token을 새 값으로 교체
 - 로그아웃 시 Access Token을 Redis Blacklist에 등록
 - Blacklist TTL은 Access Token 남은 만료 시간
 - Refresh Token 삭제로 재발급 차단

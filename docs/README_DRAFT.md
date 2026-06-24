@@ -36,12 +36,18 @@
 ### Refresh Token 저장
 
 로그인 시 발급한 Refresh Token을 Redis에 저장합니다.  
-토큰 재발급 요청 시 클라이언트가 전달한 Refresh Token과 Redis에 저장된 값을 비교합니다.
+토큰 재발급 요청 시 클라이언트가 전달한 Refresh Token과 Redis에 저장된 값을 비교하는 Whitelist 방식으로 관리합니다.
+
+Refresh Token은 14일 동안 유효하며, 재발급 성공 시 기존 Refresh Token을 폐기하고 새로운 Refresh Token으로 교체하는 Rotation 전략을 적용합니다.  
+이를 통해 Refresh Token 탈취 시 발생할 수 있는 재사용 공격 위험을 줄입니다.
 
 ### Access Token Blacklist
 
 JWT는 Stateless 구조이기 때문에 로그아웃 후에도 Access Token이 만료 전까지 사용될 수 있습니다.  
-이를 방지하기 위해 로그아웃 시 Access Token을 Redis Blacklist에 저장하고, 인증 필터에서 Blacklist 여부를 확인합니다.
+이를 방지하기 위해 로그아웃 시 아직 만료되지 않은 Access Token을 Redis Blacklist에 저장하고, 인증 필터에서 Blacklist 여부를 확인합니다.
+
+Access Token은 30분 동안 유효하며, Blacklist TTL은 Access Token의 남은 만료 시간으로 설정합니다.  
+현재 서비스 특성상 Blacklist가 반드시 필요한 수준은 아니지만, 로그아웃 이후 Access Token 사용 가능 문제를 직접 해결하고 Redis 기반 인증 전략을 학습하기 위해 적용합니다.
 
 ### 선착순 쿠폰 Redis Lock
 

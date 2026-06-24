@@ -89,9 +89,14 @@ com.example.fivespringusedmarket
 ## 4. 인증 / JWT 규칙
 
 - 로그인 성공 시 Access Token과 Refresh Token을 발급한다.
+- Access Token 만료 시간은 30분으로 한다.
+- Refresh Token 만료 시간은 14일로 한다.
 - Access Token은 일반 API 요청에 사용한다.
 - Refresh Token은 Access Token 재발급에 사용한다.
-- Refresh Token은 Redis에 저장한다.
+- Refresh Token은 Redis에 저장하고 Whitelist 방식으로 관리한다.
+- 토큰 재발급 시 요청 Refresh Token과 Redis에 저장된 Refresh Token을 비교한다.
+- 토큰 재발급 성공 시 Refresh Token Rotation 전략에 따라 새 Refresh Token으로 교체한다.
+- 재발급에 사용된 기존 Refresh Token은 더 이상 사용할 수 없다.
 - 로그아웃 시 Access Token을 Redis Blacklist에 저장한다.
 - 로그아웃 시 Redis의 Refresh Token을 삭제한다.
 - Blacklist TTL은 Access Token의 남은 만료 시간으로 설정한다.
