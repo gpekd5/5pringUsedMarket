@@ -5,6 +5,7 @@ import com.example.fivespringusedmarket.common.exception.ErrorCode;
 import com.example.fivespringusedmarket.member.entity.Member;
 import com.example.fivespringusedmarket.member.repository.MemberRepository;
 import com.example.fivespringusedmarket.product.dto.CreateProductRequest;
+import com.example.fivespringusedmarket.product.dto.MemberProfileResponse;
 import com.example.fivespringusedmarket.product.dto.ProductResponse;
 import com.example.fivespringusedmarket.product.dto.UpdateProductRequest;
 import com.example.fivespringusedmarket.product.dto.ProductListItemResponse;
@@ -103,6 +104,31 @@ public class ProductService {
     }
 
     @Transactional(readOnly = true)
+    public ProductPageResponse getMyProducts(Long memberId, String status, Pageable pageable) {
+        ProductStatus statusEnum = status != null ? parseStatus(status) : null;
+
+        // DELETED 상태는 내 판매 상품 목록에서 조회할 수 없다.
+        if (statusEnum == ProductStatus.DELETED) {
+            throw new CustomException(ErrorCode.INVALID_REQUEST);
+        }
+
+        Page<Product> productPage = productRepository.findMyProducts(memberId, statusEnum, ProductStatus.DELETED, pageable);
+
+        // 대표 이미지(sortOrder=1)를 상품 ID 기준으로 한 번에 조회해 N+1을 방지한다.
+        List<Long> productIds = productPage.map(Product::getId).toList();
+        Map<Long, String> imageUrlMap = productImageRepository
+                .findByProductIdInAndSortOrder(productIds, 0)
+                .stream()
+                .collect(Collectors.toMap(img -> img.getProduct().getId(), ProductImage::getImageUrl));
+
+        Page<ProductListItemResponse> responsePage = productPage.map(product ->
+                ProductListItemResponse.of(product, imageUrlMap.get(product.getId()))
+        );
+
+        return ProductPageResponse.of(responsePage);
+    }
+
+    @Transactional(readOnly = true)
     public ProductPageResponse getProducts(String category, String keyword, String status, Long sellerId, Pageable pageable) {
         ProductCategory categoryEnum = category != null ? parseCategory(category) : null;
         ProductStatus statusEnum = status != null ? parseStatus(status) : ProductStatus.ON_SALE;
@@ -126,6 +152,56 @@ public class ProductService {
         );
 
         return ProductPageResponse.of(responsePage);
+    }
+
+    @Transactional
+    public void updateProductStatus(Long memberId, Long productId, String status) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new CustomException(ErrorCode.PRODUCT_NOT_FOUND));
+
+        if (!product.isOwnedBy(memberId)) {
+            throw new CustomException(ErrorCode.ACCESS_DENIED);
+        }
+
+        ProductStatus next;
+        try {
+            next = ProductStatus.valueOf(status);
+        } catch (IllegalArgumentException e) {
+            throw new CustomException(ErrorCode.INVALID_STATUS);
+        }
+
+        // DELETED, RESERVED→ON_SALE 전이는 이 API에서 허용하지 않는다.
+        if (next == ProductStatus.DELETED || !product.canTransitionTo(next)) {
+            throw new CustomException(ErrorCode.INVALID_STATUS_TRANSITION);
+        }
+
+        product.updateStatus(next);
+    }
+
+    @Transactional
+    public void cancelReservation(Long memberId, Long productId) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new CustomException(ErrorCode.PRODUCT_NOT_FOUND));
+
+        if (!product.isOwnedBy(memberId)) {
+            throw new CustomException(ErrorCode.ACCESS_DENIED);
+        }
+
+        if (product.getStatus() != ProductStatus.RESERVED) {
+            throw new CustomException(ErrorCode.INVALID_STATUS_TRANSITION);
+        }
+
+        product.updateStatus(ProductStatus.ON_SALE);
+    }
+
+    @Transactional(readOnly = true)
+    public MemberProfileResponse getMemberProfile(Long memberId) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
+
+        long productCount = productRepository.countBySellerIdAndStatusNot(memberId, ProductStatus.DELETED);
+
+        return MemberProfileResponse.of(member, productCount);
     }
 
     private ProductCategory parseCategory(String value) {

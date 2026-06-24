@@ -58,4 +58,12 @@ public class Member extends BaseEntity {
         // 신규 가입 회원은 기본 권한을 MEMBER로 생성한다.
         return new Member(email, encodedPassword, nickname, MemberRole.MEMBER);
     }
+
+    public void updateNickname(String nickname) {
+        this.nickname = nickname;
+    }
+
+    public void updatePassword(String password) {
+        this.password = password;
+    }
 }

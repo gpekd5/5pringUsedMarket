@@ -452,7 +452,12 @@ EXPIRED_TOKEN
 
 ### JWT / Redis 규칙
 
-- Refresh Token은 Redis에 저장한다.
+- Access Token 만료 시간은 30분으로 한다.
+- Refresh Token 만료 시간은 14일로 한다.
+- Refresh Token은 Redis에 저장하고 Whitelist 방식으로 관리한다.
+- 토큰 재발급 시 요청 Refresh Token과 Redis에 저장된 Refresh Token을 비교한다.
+- 토큰 재발급 성공 시 Refresh Token Rotation 전략에 따라 새 Refresh Token으로 교체한다.
+- 기존 Refresh Token은 재발급 성공 이후 사용할 수 없다.
 - 로그아웃 시 Access Token을 Redis Blacklist에 저장한다.
 - Blacklist TTL은 Access Token의 남은 만료 시간으로 설정한다.
 - Refresh Token 삭제로 토큰 재발급을 차단한다.
@@ -796,9 +801,27 @@ CsStatus
 ## 21. 테스트 규칙
 
 - Service 핵심 비즈니스 로직은 테스트를 작성한다.
+- 테스트 본문은 `given`, `when`, `then` 순서로 구분해서 작성한다.
+- `given`에는 테스트 데이터와 사전 조건, `when`에는 실행 대상, `then`에는 검증 코드를 둔다.
 - 쿠폰 동시성 제어는 반드시 동시 요청 테스트를 작성한다.
 - 동시성 해결 전 실패 테스트와 해결 후 성공 테스트를 기록한다.
 - 인증/인가, 상품 상태 변경, 쿠폰 중복 발급, 채팅방 중복 생성은 우선 테스트 대상이다.
+
+테스트 구조 예시:
+
+```java
+@Test
+void testName() {
+    // given
+    ...
+
+    // when
+    ...
+
+    // then
+    ...
+}
+```
 
 동시성 테스트 키워드:
 

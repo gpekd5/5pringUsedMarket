@@ -1,6 +1,5 @@
 package com.example.fivespringusedmarket.common.security;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.example.fivespringusedmarket.common.exception.ErrorCode;
 import com.example.fivespringusedmarket.common.response.ApiResponse;
 import jakarta.servlet.ServletException;
@@ -11,6 +10,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.stereotype.Component;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * 인증은 되었지만 권한이 부족한 요청에 공통 실패 응답을 반환한다.
@@ -18,10 +18,10 @@ import org.springframework.stereotype.Component;
 @Component
 public class JwtAccessDeniedHandler implements AccessDeniedHandler {
 
-    private final ObjectMapper objectMapper;
+    private final JsonMapper jsonMapper;
 
-    public JwtAccessDeniedHandler(ObjectMapper objectMapper) {
-        this.objectMapper = objectMapper;
+    public JwtAccessDeniedHandler(JsonMapper jsonMapper) {
+        this.jsonMapper = jsonMapper;
     }
 
     @Override
@@ -34,6 +34,6 @@ public class JwtAccessDeniedHandler implements AccessDeniedHandler {
         response.setStatus(ErrorCode.ACCESS_DENIED.getHttpStatus().value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding("UTF-8");
-        objectMapper.writeValue(response.getWriter(), ApiResponse.fail(ErrorCode.ACCESS_DENIED));
+        jsonMapper.writeValue(response.getWriter(), ApiResponse.fail(ErrorCode.ACCESS_DENIED));
     }
 }

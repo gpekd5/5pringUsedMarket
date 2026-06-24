@@ -36,6 +36,8 @@ public enum ErrorCode {
     PRODUCT_OWNER_CANNOT_CHAT(HttpStatus.BAD_REQUEST, "본인 상품에는 채팅을 시작할 수 없습니다."),
     PRODUCT_SOLD_OUT(HttpStatus.BAD_REQUEST, "판매 완료되거나 삭제된 상품입니다.");
 
+	INVALID_STATUS(HttpStatus.BAD_REQUEST, "유효하지 않은 상태 값입니다."),
+	INVALID_STATUS_TRANSITION(HttpStatus.BAD_REQUEST, "허용되지 않는 상태 전이입니다.");
     private final HttpStatus httpStatus;
     private final String message;
 

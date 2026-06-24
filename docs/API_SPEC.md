@@ -173,9 +173,10 @@ COMPLETED
 
 - 요청 Header의 Access Token을 추출한다.
 - Access Token의 남은 만료 시간을 계산한다.
-- Redis Blacklist에 Access Token을 저장한다.
+- 아직 만료되지 않은 Access Token을 Redis Blacklist에 저장한다.
 - Redis Blacklist TTL은 Access Token의 남은 만료 시간으로 설정한다.
-- Redis에 저장된 Refresh Token을 삭제한다.
+- Redis Whitelist에 저장된 Refresh Token을 삭제한다.
+- Refresh Token 삭제로 이후 토큰 재발급을 차단한다.
 - 이후 Blacklist에 존재하는 Access Token으로 요청하면 401을 반환한다.
 
 ### Response
@@ -215,8 +216,10 @@ COMPLETED
 ### 처리 정책
 
 - Refresh Token 자체의 유효성을 검증한다.
-- Redis에 저장된 Refresh Token과 요청 Refresh Token을 비교한다.
-- 일치하면 새로운 Access Token을 발급한다.
+- Redis Whitelist에 저장된 Refresh Token과 요청 Refresh Token을 비교한다.
+- 일치하면 새로운 Access Token과 Refresh Token을 발급한다.
+- Refresh Token Rotation 전략에 따라 Redis에 저장된 Refresh Token을 새 Refresh Token으로 교체한다.
+- 재발급에 사용된 기존 Refresh Token은 더 이상 사용할 수 없다.
 - Refresh Token이 만료되었거나 Redis에 없으면 재로그인이 필요하다.
 
 ### Response
@@ -227,6 +230,7 @@ COMPLETED
   "message": "토큰이 재발급되었습니다.",
   "data": {
     "accessToken": "new-access-token",
+    "refreshToken": "new-refresh-token",
     "tokenType": "Bearer"
   }
 }
