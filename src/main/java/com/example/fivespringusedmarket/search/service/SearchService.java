@@ -2,13 +2,16 @@ package com.example.fivespringusedmarket.search.service;
 
 import com.example.fivespringusedmarket.common.exception.CustomException;
 import com.example.fivespringusedmarket.common.exception.ErrorCode;
+import com.example.fivespringusedmarket.member.entity.Member;
 import com.example.fivespringusedmarket.product.dto.ProductListItemResponse;
 import com.example.fivespringusedmarket.product.dto.ProductPageResponse;
 import com.example.fivespringusedmarket.product.entity.ProductCategory;
 import com.example.fivespringusedmarket.product.entity.ProductStatus;
 import com.example.fivespringusedmarket.search.dto.ProductSearchCondition;
 import com.example.fivespringusedmarket.search.dto.ProductSearchSortType;
+import com.example.fivespringusedmarket.search.entity.SearchLog;
 import com.example.fivespringusedmarket.search.repository.ProductSearchRepository;
+import com.example.fivespringusedmarket.search.repository.SearchLogRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -28,9 +31,11 @@ import org.springframework.util.StringUtils;
 public class SearchService {
 
     private final ProductSearchRepository productSearchRepository;
+    private final SearchLogRepository searchLogRepository;
 
     // 캐시가 적용되지 않은 QueryDsl 상품 검색 v1 기능
-    public ProductPageResponse searchProductsV1(String keyword, String category, String status, String sort, Pageable pageable)
+    @Transactional
+    public ProductPageResponse searchProductsV1(Member member,String keyword, String category, String status, String sort, Pageable pageable)
     {
         ProductSearchCondition condition = new ProductSearchCondition(
                 keyword,
@@ -39,9 +44,19 @@ public class SearchService {
                 parseSort(sort)
         );
 
+        saveSearchLog(member, keyword);
+
         Page<ProductListItemResponse> products = productSearchRepository.search(condition, pageable);
 
         return ProductPageResponse.of(products);
+    }
+
+    private void saveSearchLog(Member member, String keyword) {
+        if (member == null || !StringUtils.hasText(keyword)) {
+            return;
+        }
+
+        searchLogRepository.save(SearchLog.create(member, keyword.trim())); // 앞뒤 공백 제거하기 위해 트림 사용
     }
 
     private ProductCategory parseCategory(String category) {
