@@ -117,6 +117,13 @@ Redis 사용처:
 
 검색 결과용 Redis Remote Cache는 현재 프로젝트 범위에 포함하지 않는다.
 
+Redis 패키지 위치:
+
+- Redis 연결, 직렬화, 공통 설정은 `common.config`에 둔다.
+- 도메인별 Redis 접근 로직은 각 도메인의 `repository` 패키지에 둔다.
+- Redis 사용 로직을 공통 패키지에 일괄 배치하지 않는다.
+- 예: `auth.repository.RefreshTokenRedisRepository`, `coupon.repository.CouponRedisLockRepository`, `search.repository.PopularKeywordRedisRepository`, `chat.repository.ChatRedisPublisher`
+
 Redis Lock 구현 시 고려사항:
 
 - Lock Key는 비즈니스 기준으로 설계한다. 예: `lock:coupon:{couponId}`

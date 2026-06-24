@@ -128,10 +128,10 @@ com.example.fivespringusedmarket
 | --- | --- |
 | `controller` | HTTP 요청/응답 처리, Request DTO 검증, Service 호출 |
 | `service` | 비즈니스 로직 처리, 트랜잭션 관리, Entity 상태 변경 |
-| `repository` | DB 조회/저장/수정/삭제 |
+| `repository` | DB 또는 도메인 전용 외부 저장소 조회/저장/수정/삭제 |
 | `dto` | Request, Response, 내부 전달용 DTO |
 | `entity` | JPA Entity, DB 테이블 매핑, 상태 변경 메서드 |
-| `common` | 공통 응답, 예외, 보안, Redis, 설정 |
+| `common` | 공통 응답, 예외, 보안, Redis 설정 |
 
 ---
 
@@ -149,7 +149,7 @@ Controller → Service → Repository → Entity
 - Controller에서 Repository를 직접 호출하지 않는다.
 - Controller에서 비즈니스 로직을 작성하지 않는다.
 - Service는 Repository를 통해 Entity를 조회하거나 저장한다.
-- Repository는 DB 접근만 담당한다.
+- Repository는 DB 접근 또는 도메인 전용 외부 저장소 접근만 담당한다.
 - Entity를 API 응답으로 직접 반환하지 않는다.
 - 다른 도메인의 Repository를 직접 많이 끌어오는 구조는 피하고, 필요하면 해당 도메인 Service 메서드로 위임한다.
 
@@ -695,6 +695,24 @@ Redis 사용처는 아래로 제한한다.
 - 채팅 Redis Pub/Sub
 
 검색 결과용 Redis Remote Cache는 현재 프로젝트 범위에 포함하지 않는다.
+
+### 패키지 위치
+
+Redis 연결, 직렬화, 공통 설정은 `common.config`에 둔다.
+
+도메인별 Redis 접근 로직은 각 도메인의 `repository` 패키지에 둔다.
+Redis를 사용한다는 이유만으로 모든 Redis Repository를 `common`에 모으지 않는다.
+
+예시:
+
+```text
+auth.repository.RefreshTokenRedisRepository
+auth.repository.AccessTokenBlacklistRepository
+coupon.repository.CouponRedisLockRepository
+search.repository.PopularKeywordRedisRepository
+chat.repository.ChatRedisPublisher
+chat.repository.ChatRedisSubscriber
+```
 
 ### Key 네이밍
 
