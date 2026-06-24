@@ -1,5 +1,6 @@
 package com.example.fivespringusedmarket.common.security;
 
+import com.example.fivespringusedmarket.common.exception.CustomException;
 import com.example.fivespringusedmarket.common.exception.ErrorCode;
 import com.example.fivespringusedmarket.common.response.ApiResponse;
 import jakarta.servlet.ServletException;
@@ -30,10 +31,20 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
             HttpServletResponse response,
             AuthenticationException authException
     ) throws IOException, ServletException {
-        // 인증 실패는 401 UNAUTHORIZED로 통일한다.
-        response.setStatus(ErrorCode.UNAUTHORIZED.getHttpStatus().value());
+        ErrorCode errorCode = resolveErrorCode(authException);
+
+        // 인증 실패는 ErrorCode 기준의 401 응답으로 변환한다.
+        response.setStatus(errorCode.getHttpStatus().value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding("UTF-8");
-        jsonMapper.writeValue(response.getWriter(), ApiResponse.fail(ErrorCode.UNAUTHORIZED));
+        jsonMapper.writeValue(response.getWriter(), ApiResponse.fail(errorCode));
+    }
+
+    private ErrorCode resolveErrorCode(AuthenticationException authException) {
+        if (authException.getCause() instanceof CustomException customException) {
+            return customException.getErrorCode();
+        }
+
+        return ErrorCode.UNAUTHORIZED;
     }
 }
