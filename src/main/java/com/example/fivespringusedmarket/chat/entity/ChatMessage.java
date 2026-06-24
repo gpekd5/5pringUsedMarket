@@ -35,7 +35,6 @@ public class ChatMessage {
     @JoinColumn(name = "chat_room_id", nullable = false)
     private ChatRoom chatRoom;
 
-    // nullable — ENTER / LEAVE 시스템 메시지는 null이다.
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "sender_id")
     private Member sender;
@@ -60,18 +59,6 @@ public class ChatMessage {
         message.sender = sender;
         message.type = MessageType.TALK;
         message.content = content;
-        return message;
-    }
-
-    /**
-     * 입장 시스템 메시지를 생성한다.
-     */
-    public static ChatMessage createEnter(ChatRoom chatRoom, String nickname) {
-        ChatMessage message = new ChatMessage();
-        message.chatRoom = chatRoom;
-        message.sender = null;
-        message.type = MessageType.ENTER;
-        message.content = nickname + "님이 입장했습니다.";
         return message;
     }
 

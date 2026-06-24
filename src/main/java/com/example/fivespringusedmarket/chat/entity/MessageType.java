@@ -8,6 +8,5 @@ package com.example.fivespringusedmarket.chat.entity;
  */
 public enum MessageType {
     TALK,
-    ENTER,
     SYSTEM
 }

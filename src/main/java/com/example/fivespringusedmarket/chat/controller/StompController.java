@@ -42,7 +42,6 @@ public class StompController {
 
         ChatMessageBroadcast broadcast = switch (request.type()) {
             case TALK -> stompService.sendMessage(roomId, memberId, request);
-            case ENTER -> stompService.enterRoom(roomId, memberId);
             case SYSTEM -> throw new CustomException(ErrorCode.INVALID_MESSAGE_TYPE);
         };
 

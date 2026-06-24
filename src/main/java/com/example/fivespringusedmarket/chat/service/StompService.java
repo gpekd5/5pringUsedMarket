@@ -46,26 +46,4 @@ public class StompService {
 
         return ChatMessageBroadcast.from(message);
     }
-
-    /*
-      STOMP 입장 이벤트를 처리한다.
-      시스템 메시지 저장 및 브로드캐스트만 담당한다.
-      ChatMember 추가는 REST API(adminEnterCsRoom)에서 처리한다.
-     */
-    @Transactional
-    public ChatMessageBroadcast enterRoom(Long roomId, Long memberId) {
-        ChatRoom room = chatRoomCommonMethod.getChatRoomOrThrow(roomId);
-        Member member = chatRoomCommonMethod.getMemberOrThrow(memberId);
-
-        // 참여자가 아니면 입장 메시지를 보낼 수 없다.
-        chatRoomCommonMethod.validateChatMember(roomId, memberId);
-
-        ChatMessage enterMessage = chatMessageRepository.save(
-                ChatMessage.createEnter(room, member.getNickname())
-        );
-        room.updateLastMessage(enterMessage.getContent(),enterMessage.getCreatedAt());
-
-        return ChatMessageBroadcast.from(enterMessage);
-    }
-
 }
