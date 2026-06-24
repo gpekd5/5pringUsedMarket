@@ -7,8 +7,12 @@ import com.example.fivespringusedmarket.auth.dto.SignupResponse;
 import com.example.fivespringusedmarket.auth.dto.TokenResponse;
 import com.example.fivespringusedmarket.auth.service.AuthService;
 import com.example.fivespringusedmarket.common.response.ApiResponse;
+import com.example.fivespringusedmarket.common.security.AuthMember;
+import com.example.fivespringusedmarket.common.security.BearerTokenResolver;
 import jakarta.validation.Valid;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,9 +26,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
+    private final BearerTokenResolver bearerTokenResolver;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, BearerTokenResolver bearerTokenResolver) {
         this.authService = authService;
+        this.bearerTokenResolver = bearerTokenResolver;
     }
 
     @PostMapping("/signup")
@@ -43,5 +49,16 @@ public class AuthController {
     public ResponseEntity<ApiResponse<TokenResponse>> reissue(@Valid @RequestBody ReissueRequest request) {
         TokenResponse response = authService.reissue(request);
         return ResponseEntity.ok(ApiResponse.success("토큰이 재발급되었습니다.", response));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse<Void>> logout(
+            @AuthenticationPrincipal AuthMember authMember,
+            HttpServletRequest request
+    ) {
+        String accessToken = bearerTokenResolver.resolve(request);
+        authService.logout(authMember.memberId(), accessToken);
+
+        return ResponseEntity.ok(ApiResponse.success("로그아웃이 완료되었습니다.", null));
     }
 }

@@ -5,6 +5,7 @@ import com.example.fivespringusedmarket.auth.dto.SignupRequest;
 import com.example.fivespringusedmarket.auth.dto.SignupResponse;
 import com.example.fivespringusedmarket.auth.dto.ReissueRequest;
 import com.example.fivespringusedmarket.auth.dto.TokenResponse;
+import com.example.fivespringusedmarket.auth.repository.AccessTokenBlacklistRepository;
 import com.example.fivespringusedmarket.auth.repository.RefreshTokenRedisRepository;
 import com.example.fivespringusedmarket.common.exception.CustomException;
 import com.example.fivespringusedmarket.common.exception.ErrorCode;
@@ -16,6 +17,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 /**
  * 회원가입, 로그인, Access Token 발급을 담당한다.
@@ -27,17 +29,20 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final RefreshTokenRedisRepository refreshTokenRedisRepository;
+    private final AccessTokenBlacklistRepository accessTokenBlacklistRepository;
 
     public AuthService(
             MemberRepository memberRepository,
             PasswordEncoder passwordEncoder,
             JwtUtil jwtUtil,
-            RefreshTokenRedisRepository refreshTokenRedisRepository
+            RefreshTokenRedisRepository refreshTokenRedisRepository,
+            AccessTokenBlacklistRepository accessTokenBlacklistRepository
     ) {
         this.memberRepository = memberRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
         this.refreshTokenRedisRepository = refreshTokenRedisRepository;
+        this.accessTokenBlacklistRepository = accessTokenBlacklistRepository;
     }
 
     @Transactional
@@ -86,6 +91,16 @@ public class AuthService {
         refreshTokenRedisRepository.save(member.getId(), newRefreshToken, jwtUtil.getRefreshTokenExpiration());
 
         return TokenResponse.from(newAccessToken, newRefreshToken);
+    }
+
+    public void logout(Long memberId, String accessToken) {
+        if (!StringUtils.hasText(accessToken)) {
+            throw new CustomException(ErrorCode.UNAUTHORIZED);
+        }
+
+        long remainingExpirationMillis = jwtUtil.getRemainingExpirationMillis(accessToken);
+        accessTokenBlacklistRepository.save(accessToken, remainingExpirationMillis);
+        refreshTokenRedisRepository.deleteByMemberId(memberId);
     }
 
     private void validateDuplicatedEmail(String email) {

@@ -21,19 +21,20 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private static final String AUTHORIZATION_HEADER = "Authorization";
-    private static final String BEARER_PREFIX = "Bearer ";
     private static final String ROLE_PREFIX = "ROLE_";
 
     private final JwtUtil jwtUtil;
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+    private final BearerTokenResolver bearerTokenResolver;
 
     public JwtAuthenticationFilter(
             JwtUtil jwtUtil,
-            JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint
+            JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint,
+            BearerTokenResolver bearerTokenResolver
     ) {
         this.jwtUtil = jwtUtil;
         this.jwtAuthenticationEntryPoint = jwtAuthenticationEntryPoint;
+        this.bearerTokenResolver = bearerTokenResolver;
     }
 
     @Override
@@ -42,7 +43,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain
     ) throws ServletException, IOException {
-        String token = resolveToken(request);
+        String token = bearerTokenResolver.resolve(request);
 
         try {
             if (StringUtils.hasText(token)) {
@@ -72,16 +73,5 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         );
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
-    }
-
-    private String resolveToken(HttpServletRequest request) {
-        String bearerToken = request.getHeader(AUTHORIZATION_HEADER);
-
-        if (StringUtils.hasText(bearerToken) && bearerToken.startsWith(BEARER_PREFIX)) {
-            // Bearer prefix를 제거한 순수 JWT 문자열만 반환한다.
-            return bearerToken.substring(BEARER_PREFIX.length());
-        }
-
-        return null;
     }
 }
