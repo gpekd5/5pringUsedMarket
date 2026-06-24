@@ -1,9 +1,10 @@
 package com.example.fivespringusedmarket.auth.service;
 
 import com.example.fivespringusedmarket.auth.dto.LoginRequest;
-import com.example.fivespringusedmarket.auth.dto.LoginResponse;
 import com.example.fivespringusedmarket.auth.dto.SignupRequest;
 import com.example.fivespringusedmarket.auth.dto.SignupResponse;
+import com.example.fivespringusedmarket.auth.dto.ReissueRequest;
+import com.example.fivespringusedmarket.auth.dto.TokenResponse;
 import com.example.fivespringusedmarket.auth.repository.RefreshTokenRedisRepository;
 import com.example.fivespringusedmarket.common.exception.CustomException;
 import com.example.fivespringusedmarket.common.exception.ErrorCode;
@@ -51,7 +52,7 @@ public class AuthService {
         return new SignupResponse(savedMember.getId(), savedMember.getEmail(), savedMember.getNickname());
     }
 
-    public LoginResponse login(LoginRequest request) {
+    public TokenResponse login(LoginRequest request) {
         Member member = memberRepository.findByEmail(request.email())
                 .orElseThrow(() -> new CustomException(ErrorCode.INVALID_LOGIN));
 
@@ -63,7 +64,28 @@ public class AuthService {
         String refreshToken = jwtUtil.createRefreshToken(member);
         refreshTokenRedisRepository.save(member.getId(), refreshToken, jwtUtil.getRefreshTokenExpiration());
 
-        return LoginResponse.from(accessToken, refreshToken);
+        return TokenResponse.from(accessToken, refreshToken);
+    }
+
+    public TokenResponse reissue(ReissueRequest request) {
+        String requestedRefreshToken = request.refreshToken();
+        Long memberId = jwtUtil.extractMemberIdFromRefreshToken(requestedRefreshToken);
+
+        String savedRefreshToken = refreshTokenRedisRepository.findByMemberId(memberId)
+                .orElseThrow(() -> new CustomException(ErrorCode.INVALID_REFRESH_TOKEN));
+
+        if (!savedRefreshToken.equals(requestedRefreshToken)) {
+            throw new CustomException(ErrorCode.INVALID_REFRESH_TOKEN);
+        }
+
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
+
+        String newAccessToken = jwtUtil.createAccessToken(member);
+        String newRefreshToken = jwtUtil.createRefreshToken(member);
+        refreshTokenRedisRepository.save(member.getId(), newRefreshToken, jwtUtil.getRefreshTokenExpiration());
+
+        return TokenResponse.from(newAccessToken, newRefreshToken);
     }
 
     private void validateDuplicatedEmail(String email) {
