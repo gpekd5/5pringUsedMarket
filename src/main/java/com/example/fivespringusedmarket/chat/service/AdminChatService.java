@@ -3,6 +3,7 @@ package com.example.fivespringusedmarket.chat.service;
 import com.example.fivespringusedmarket.chat.common.ChatRoomCommonMethod;
 import com.example.fivespringusedmarket.chat.dto.response.AdminEnterResponse;
 import com.example.fivespringusedmarket.chat.dto.response.ChatMessageBroadcast;
+import com.example.fivespringusedmarket.chat.dto.response.CsRoomListResponse;
 import com.example.fivespringusedmarket.chat.dto.response.CsStatusUpdateResponse;
 import com.example.fivespringusedmarket.chat.entity.*;
 import com.example.fivespringusedmarket.chat.repository.ChatMemberRepository;
@@ -12,9 +13,13 @@ import com.example.fivespringusedmarket.common.exception.CustomException;
 import com.example.fivespringusedmarket.common.exception.ErrorCode;
 import com.example.fivespringusedmarket.member.entity.Member;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -74,5 +79,29 @@ public class AdminChatService {
                 ChatMessageBroadcast.from(systemMessage)
         );
         return new CsStatusUpdateResponse(roomId, newStatus.name());
+    }
+
+    /*
+      관리자용 CS 채팅방 목록 조회
+      csStatus가 null이면 전체, 값이 있으면 해당 상태만 필터링한다
+      N+1 방지: roomId 목록으로 ChatMember를 한 번에 배치 조회한다
+     */
+    @Transactional(readOnly = true)
+    public Page<CsRoomListResponse> getCsRooms(CsStatus csStatus, Pageable pageable) {
+        Page<ChatRoom> rooms = chatRoomRepository.findCsRooms(csStatus, pageable);
+
+        List<Long> roomIds = rooms.stream().map(ChatRoom::getId).toList();
+        if (roomIds.isEmpty()) {
+            return Page.empty(pageable);
+        }
+
+        List<ChatMember> allMembers = chatMemberRepository.findByChatRoomIdInWithMember(roomIds);
+
+        return rooms.map(room -> {
+            List<ChatMember> roomMembers = allMembers.stream()
+                    .filter(cm -> cm.getChatRoom().getId().equals(room.getId()))
+                    .toList();
+            return CsRoomListResponse.of(room, roomMembers);
+        });
     }
 }
