@@ -11,6 +11,7 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.UUID;
 import javax.crypto.SecretKey;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -51,6 +52,7 @@ public class JwtUtil {
 
         // Controller에서 AuthMember를 만들 수 있도록 필요한 최소 Claim을 담는다.
         return Jwts.builder()
+                .id(UUID.randomUUID().toString())
                 .subject(String.valueOf(member.getId()))
                 .claim(MEMBER_ID_CLAIM, member.getId())
                 .claim(EMAIL_CLAIM, member.getEmail())
@@ -69,6 +71,7 @@ public class JwtUtil {
         Date expiration = new Date(now.getTime() + refreshTokenExpiration);
 
         return Jwts.builder()
+                .id(UUID.randomUUID().toString())
                 .subject(String.valueOf(member.getId()))
                 .claim(MEMBER_ID_CLAIM, member.getId())
                 .claim(TOKEN_TYPE_CLAIM, REFRESH_TOKEN_TYPE)
