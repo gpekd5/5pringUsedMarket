@@ -15,7 +15,6 @@ import com.example.fivespringusedmarket.common.exception.ErrorCode;
 import com.example.fivespringusedmarket.member.entity.Member;
 import com.example.fivespringusedmarket.member.repository.MemberRepository;
 import com.example.fivespringusedmarket.product.entity.Product;
-import com.example.fivespringusedmarket.product.entity.ProductStatus;
 import com.example.fivespringusedmarket.product.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -47,7 +46,7 @@ public class ChatService {
             throw new CustomException(ErrorCode.PRODUCT_OWNER_CANNOT_CHAT);
         }
 
-        if (product.getStatus() == ProductStatus.SOLD) {
+        if (product.isSold() || product.isDeleted()) {
             throw new CustomException(ErrorCode.PRODUCT_SOLD_OUT);
         }
 
