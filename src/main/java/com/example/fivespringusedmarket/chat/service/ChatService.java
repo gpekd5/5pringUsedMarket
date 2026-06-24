@@ -2,9 +2,8 @@ package com.example.fivespringusedmarket.chat.service;
 
 import com.example.fivespringusedmarket.chat.dto.request.CsChatRoomCreateRequest;
 import com.example.fivespringusedmarket.chat.dto.request.TradeChatRoomCreateRequest;
-import com.example.fivespringusedmarket.chat.dto.response.ChatRoomListResponse;
-import com.example.fivespringusedmarket.chat.dto.response.CsChatRoomCreateResponse;
-import com.example.fivespringusedmarket.chat.dto.response.TradeChatRoomCreateResponse;
+import com.example.fivespringusedmarket.chat.dto.response.*;
+import com.example.fivespringusedmarket.chat.entity.ChatMessage;
 import com.example.fivespringusedmarket.chat.entity.ChatMember;
 import com.example.fivespringusedmarket.chat.entity.ChatMemberRole;
 import com.example.fivespringusedmarket.chat.entity.ChatRoom;
@@ -25,8 +24,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.Optional;
 
 @Service
@@ -112,6 +112,52 @@ public class ChatService {
             return ChatRoomListResponse.of(room, counterpartMember, myChatMember.getUnreadCount());
         });
     }
+    /**
+     채팅방 상세 정보를 조회
+     해당 채팅방의 참여자만 조회할 수 있다
+     */
+    @Transactional(readOnly = true)
+    public ChatRoomDetailResponse getChatRoomDetail(Long memberId, Long roomId) {
+        ChatRoom room = getChatRoomOrThrow(roomId);
+
+        validateChatMember(roomId, memberId);
+
+        List<ChatMember> roomMembers = chatMemberRepository.findByChatRoomIdWithMember(roomId);
+
+        ChatMember counterpartMember = roomMembers.stream()
+                .filter(cm -> !cm.getMember().getId().equals(memberId))
+                .findFirst()
+                .orElse(null);
+
+        return ChatRoomDetailResponse.of(room, counterpartMember);
+    }
+
+    @Transactional(readOnly = true)
+    public MessageListResponse getMessages(Long memberId, Long roomId, Long lastMessageId, int size) {
+        if (!chatMemberRepository.existsByChatRoomIdAndMemberId(roomId, memberId)) {
+            throw new CustomException(ErrorCode.CHAT_ACCESS_DENIED);
+        }
+
+        // size+1개 조회해서 다음 페이지 존재 여부 판단
+        List<ChatMessage> fetched = chatMessageRepository.findMessagesByCursor(
+                roomId, lastMessageId, PageRequest.of(0, size + 1)
+        );
+
+        boolean hasNext = fetched.size() > size;
+        List<ChatMessage> messages = hasNext ? fetched.subList(0, size) : fetched;
+
+        // DESC로 가져온 메시지를 ASC(오래된 순)로 뒤집어 반환한다.
+        List<ChatMessage> ordered = new ArrayList<>(messages);
+        Collections.reverse(ordered);
+
+        Long nextCursorId = hasNext ? messages.get(messages.size() - 1).getId() : null;
+
+        return new MessageListResponse(
+                ordered.stream().map(MessageListResponse.MessageItem::from).toList(),
+                hasNext,
+                nextCursorId
+        );
+    }
 
     private Product getProductOrThrow(Long productId) {
         return productRepository.findById(productId)
@@ -121,5 +167,16 @@ public class ChatService {
     private Member getMemberOrThrow(Long memberId) {
         return memberRepository.findById(memberId)
                 .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
+    }
+
+    private ChatRoom getChatRoomOrThrow(Long roomId) {
+        return chatRoomRepository.findById(roomId)
+                .orElseThrow(() -> new CustomException(ErrorCode.CHAT_ROOM_NOT_FOUND));
+    }
+
+    private void validateChatMember(Long roomId, Long memberId) {
+        if (!chatMemberRepository.existsByChatRoomIdAndMemberId(roomId, memberId)) {
+            throw new CustomException(ErrorCode.CHAT_ACCESS_DENIED);
+        }
     }
 }

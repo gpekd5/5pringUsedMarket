@@ -2,9 +2,7 @@ package com.example.fivespringusedmarket.chat.controller;
 
 import com.example.fivespringusedmarket.chat.dto.request.CsChatRoomCreateRequest;
 import com.example.fivespringusedmarket.chat.dto.request.TradeChatRoomCreateRequest;
-import com.example.fivespringusedmarket.chat.dto.response.ChatRoomListResponse;
-import com.example.fivespringusedmarket.chat.dto.response.CsChatRoomCreateResponse;
-import com.example.fivespringusedmarket.chat.dto.response.TradeChatRoomCreateResponse;
+import com.example.fivespringusedmarket.chat.dto.response.*;
 import com.example.fivespringusedmarket.chat.service.ChatService;
 import com.example.fivespringusedmarket.common.response.ApiResponse;
 import com.example.fivespringusedmarket.common.security.AuthMember;
@@ -60,5 +58,33 @@ public class ChatController {
                 authMember.memberId(), PageRequest.of(page, size)
         );
         return ResponseEntity.ok(ApiResponse.success("채팅방 목록 조회 성공", response));
+    }
+
+    /**
+     * 채팅방 상세 조회.
+     */
+    @GetMapping("/{roomId}")
+    public ResponseEntity<ApiResponse<ChatRoomDetailResponse>> getChatRoomDetail(
+            @AuthenticationPrincipal AuthMember authMember,
+            @PathVariable Long roomId
+    ) {
+        ChatRoomDetailResponse response = chatService.getChatRoomDetail(authMember.memberId(), roomId);
+        return ResponseEntity.ok(ApiResponse.success("채팅방 조회 성공", response));
+    }
+
+    /**
+     * 메시지 목록 조회 (커서 기반 페이징).
+     */
+    @GetMapping("/{roomId}/messages")
+    public ResponseEntity<ApiResponse<MessageListResponse>> getMessages(
+            @AuthenticationPrincipal AuthMember authMember,
+            @PathVariable Long roomId,
+            @RequestParam(required = false) Long lastMessageId,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        MessageListResponse response = chatService.getMessages(
+                authMember.memberId(), roomId, lastMessageId, size
+        );
+        return ResponseEntity.ok(ApiResponse.success("메시지 목록 조회 성공", response));
     }
 }
