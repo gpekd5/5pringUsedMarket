@@ -78,6 +78,10 @@ public class JwtUtil {
                 .compact();
     }
 
+    public long getRefreshTokenExpiration() {
+        return refreshTokenExpiration;
+    }
+
     public boolean isValidToken(String token) {
         try {
             parseClaims(token);

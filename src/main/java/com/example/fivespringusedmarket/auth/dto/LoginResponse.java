@@ -1,17 +1,17 @@
 package com.example.fivespringusedmarket.auth.dto;
 
 /**
- * 로그인 성공 후 발급되는 Access Token 응답 값이다.
+ * 로그인 성공 후 발급되는 토큰 응답 값이다.
  */
 public record LoginResponse(
         String accessToken,
+        String refreshToken,
         String tokenType
 ) {
 
     private static final String BEARER_TOKEN_TYPE = "Bearer";
 
-    public static LoginResponse from(String accessToken) {
-        // 이번 PR에서는 Refresh Token 없이 Access Token만 응답한다.
-        return new LoginResponse(accessToken, BEARER_TOKEN_TYPE);
+    public static LoginResponse from(String accessToken, String refreshToken) {
+        return new LoginResponse(accessToken, refreshToken, BEARER_TOKEN_TYPE);
     }
 }

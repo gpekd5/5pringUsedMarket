@@ -4,6 +4,7 @@ import com.example.fivespringusedmarket.auth.dto.LoginRequest;
 import com.example.fivespringusedmarket.auth.dto.LoginResponse;
 import com.example.fivespringusedmarket.auth.dto.SignupRequest;
 import com.example.fivespringusedmarket.auth.dto.SignupResponse;
+import com.example.fivespringusedmarket.auth.repository.RefreshTokenRedisRepository;
 import com.example.fivespringusedmarket.common.exception.CustomException;
 import com.example.fivespringusedmarket.common.exception.ErrorCode;
 import com.example.fivespringusedmarket.common.security.JwtUtil;
@@ -24,15 +25,18 @@ public class AuthService {
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final RefreshTokenRedisRepository refreshTokenRedisRepository;
 
     public AuthService(
             MemberRepository memberRepository,
             PasswordEncoder passwordEncoder,
-            JwtUtil jwtUtil
+            JwtUtil jwtUtil,
+            RefreshTokenRedisRepository refreshTokenRedisRepository
     ) {
         this.memberRepository = memberRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
+        this.refreshTokenRedisRepository = refreshTokenRedisRepository;
     }
 
     @Transactional
@@ -47,7 +51,6 @@ public class AuthService {
         return new SignupResponse(savedMember.getId(), savedMember.getEmail(), savedMember.getNickname());
     }
 
-    @Transactional(readOnly = true)
     public LoginResponse login(LoginRequest request) {
         Member member = memberRepository.findByEmail(request.email())
                 .orElseThrow(() -> new CustomException(ErrorCode.INVALID_LOGIN));
@@ -57,7 +60,10 @@ public class AuthService {
         }
 
         String accessToken = jwtUtil.createAccessToken(member);
-        return LoginResponse.from(accessToken);
+        String refreshToken = jwtUtil.createRefreshToken(member);
+        refreshTokenRedisRepository.save(member.getId(), refreshToken, jwtUtil.getRefreshTokenExpiration());
+
+        return LoginResponse.from(accessToken, refreshToken);
     }
 
     private void validateDuplicatedEmail(String email) {
