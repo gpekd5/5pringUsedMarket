@@ -58,7 +58,7 @@ public class SearchService {
 
     private ProductStatus parseStatus(String status) {
         if (!StringUtils.hasText(status)) {
-            return null;
+            return ProductStatus.ON_SALE; // 일반 사용자가 상품 검색하면 보통 판매중 상품만 기본 노출
         }
 
         try{
