@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 /**
  * 채팅 메시지를 저장하는 JPA 엔티티다.
  * ChatRoom을 단방향 참조한다(ChatRoom에서 역방향 컬렉션 없음).
- * type 필드로 TALK / ENTER / LEAVE를 구분한다.
+ * type 필드로 TALK / ENTER / SYSTEM 을 구분한다
  * sender가 null이면 시스템 메시지(ENTER / LEAVE)다.
  * (chat_room_id, id DESC) 복합 인덱스로 커서 페이징을 최적화한다.
  */
@@ -75,17 +75,6 @@ public class ChatMessage {
         return message;
     }
 
-    /**
-     * 퇴장 시스템 메시지를 생성한다.
-     */
-    public static ChatMessage createLeave(ChatRoom chatRoom, String nickname) {
-        ChatMessage message = new ChatMessage();
-        message.chatRoom = chatRoom;
-        message.sender = null;
-        message.type = MessageType.LEAVE;
-        message.content = nickname + "님이 퇴장했습니다.";
-        return message;
-    }
     /*
       문의 상태 변경 시스템 메시지를 생성한다.
      */

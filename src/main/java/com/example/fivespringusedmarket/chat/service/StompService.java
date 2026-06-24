@@ -68,23 +68,4 @@ public class StompService {
         return ChatMessageBroadcast.from(enterMessage);
     }
 
-    /*
-      채팅방 퇴장 이벤트를 처리한다.
-      ChatMember에서 제거하지 않고 퇴장 시스템 메시지만 저장한다.
-      재입장 시 기존 ChatMember 레코드를 그대로 사용한다.
-     */
-    @Transactional
-    public ChatMessageBroadcast leaveRoom(Long roomId, Long memberId) {
-        ChatRoom room = chatRoomCommonMethod.getChatRoomOrThrow(roomId);
-        Member member = chatRoomCommonMethod.getMemberOrThrow(memberId);
-
-        chatRoomCommonMethod.validateChatMember(roomId, memberId);
-
-        ChatMessage leaveMessage = chatMessageRepository.save(
-                ChatMessage.createLeave(room, member.getNickname())
-        );
-        room.updateLastMessage(leaveMessage.getContent(),leaveMessage.getCreatedAt());
-
-        return ChatMessageBroadcast.from(leaveMessage);
-    }
 }

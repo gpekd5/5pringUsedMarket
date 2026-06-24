@@ -21,6 +21,7 @@ public class ChatRoomCommonMethod {
     private final MemberRepository memberRepository;
     private final ProductRepository productRepository;
 
+    //서비스 로직 공통메소드
     public ChatRoom getChatRoomOrThrow(Long roomId) {
         return chatRoomRepository.findById(roomId)
                 .orElseThrow(() -> new CustomException(ErrorCode.CHAT_ROOM_NOT_FOUND));
