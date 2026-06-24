@@ -74,4 +74,19 @@ public class CouponService {
         }
         return userCouponRepository.findByMemberIdAndUsedAtIsNull(memberId, pageable).map(UserCouponResponse::from);
     }
+
+    @Transactional
+    public void useCoupon(Long userCouponId, Long memberId) {
+        UserCoupon userCoupon = userCouponRepository.findByIdAndMemberId(userCouponId, memberId)
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_COUPON_NOT_FOUND));
+
+        if (userCoupon.isUsed()) {
+            throw new CustomException(ErrorCode.COUPON_ALREADY_USED);
+        }
+        if (userCoupon.isExpired()) {
+            throw new CustomException(ErrorCode.COUPON_EXPIRED);
+        }
+
+        userCoupon.use();
+    }
 }
