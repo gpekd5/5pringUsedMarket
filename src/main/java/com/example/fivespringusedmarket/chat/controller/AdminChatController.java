@@ -1,9 +1,15 @@
 package com.example.fivespringusedmarket.chat.controller;
 
+import com.example.fivespringusedmarket.chat.dto.request.CsStatusUpdateRequest;
 import com.example.fivespringusedmarket.chat.dto.response.AdminEnterResponse;
+import com.example.fivespringusedmarket.chat.dto.response.CsStatusUpdateResponse;
+import com.example.fivespringusedmarket.chat.entity.CsStatus;
 import com.example.fivespringusedmarket.chat.service.AdminChatService;
+import com.example.fivespringusedmarket.common.exception.CustomException;
+import com.example.fivespringusedmarket.common.exception.ErrorCode;
 import com.example.fivespringusedmarket.common.response.ApiResponse;
 import com.example.fivespringusedmarket.common.security.AuthMember;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -28,6 +34,28 @@ public class AdminChatController {
     ) {
         AdminEnterResponse response = adminChatService.adminEnterCsRoom(roomId, authMember.memberId());
         return ResponseEntity.ok(ApiResponse.success("CS 채팅방 입장 성공", response));
+    }
+
+    /**
+      CS 문의 채팅방 상태를 변경
+      변경 후 고객에게 STOMP 알림이 발송
+     */
+    @PatchMapping("/{roomId}/status")
+    public ResponseEntity<ApiResponse<CsStatusUpdateResponse>> changeCsStatus(
+            @PathVariable Long roomId,
+            @Valid @RequestBody CsStatusUpdateRequest request
+    ) {
+        CsStatus newStatus = parseCsStatus(request.status());
+        CsStatusUpdateResponse response = adminChatService.changeCsStatus(roomId, newStatus);
+        return ResponseEntity.ok(ApiResponse.success("CS 상태 변경 성공", response));
+    }
+
+    private CsStatus parseCsStatus(String status) {
+        try {
+            return CsStatus.valueOf(status.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new CustomException(ErrorCode.INVALID_CS_STATUS_TRANSITION);
+        }
     }
 }
 

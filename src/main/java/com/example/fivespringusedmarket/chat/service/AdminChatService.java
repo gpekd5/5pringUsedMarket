@@ -2,13 +2,17 @@ package com.example.fivespringusedmarket.chat.service;
 
 import com.example.fivespringusedmarket.chat.common.ChatRoomCommonMethod;
 import com.example.fivespringusedmarket.chat.dto.response.AdminEnterResponse;
+import com.example.fivespringusedmarket.chat.dto.response.ChatMessageBroadcast;
+import com.example.fivespringusedmarket.chat.dto.response.CsStatusUpdateResponse;
 import com.example.fivespringusedmarket.chat.entity.*;
 import com.example.fivespringusedmarket.chat.repository.ChatMemberRepository;
+import com.example.fivespringusedmarket.chat.repository.ChatMessageRepository;
 import com.example.fivespringusedmarket.chat.repository.ChatRoomRepository;
 import com.example.fivespringusedmarket.common.exception.CustomException;
 import com.example.fivespringusedmarket.common.exception.ErrorCode;
 import com.example.fivespringusedmarket.member.entity.Member;
 import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +23,8 @@ public class AdminChatService {
     private final ChatRoomRepository chatRoomRepository;
     private final ChatMemberRepository chatMemberRepository;
     private final ChatRoomCommonMethod chatRoomCommonMethod;
+    private final ChatMessageRepository chatMessageRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
     @Transactional
     public AdminEnterResponse adminEnterCsRoom(Long roomId, Long adminId) {
@@ -42,5 +48,31 @@ public class AdminChatService {
         room.changeCsStatus(CsStatus.IN_PROGRESS);
 
         return new AdminEnterResponse(room.getId(), room.getTitle(), room.getCsStatus().name());
+    }
+
+    /*
+      CS 채팅방의 상태를 변경
+      ADMIN 전용, 상태 변경 후 고객에게 STOMP 알림을 발송
+     */
+    @Transactional
+    public CsStatusUpdateResponse changeCsStatus(Long roomId, CsStatus newStatus) {
+        ChatRoom room = chatRoomCommonMethod.getChatRoomOrThrow(roomId);
+
+        if (room.getType() != ChatRoomType.CS) {
+            throw new CustomException(ErrorCode.NOT_CS_ROOM);
+        }
+        // 상태 전이 유효성은 엔티티 내부에서 검증한다.
+        room.changeCsStatus(newStatus);
+        // 시스템 메시지 저장
+        ChatMessage systemMessage = chatMessageRepository.save(
+                ChatMessage.createSystem(room, "문의 상태가 " + newStatus.name() + "으로 변경되었습니다.")
+        );
+        room.updateLastMessage(systemMessage.getContent(), systemMessage.getCreatedAt());
+        // STOMP 브로드캐스트
+        messagingTemplate.convertAndSend(
+                "/sub/chat/rooms/" + roomId,
+                ChatMessageBroadcast.from(systemMessage)
+        );
+        return new CsStatusUpdateResponse(roomId, newStatus.name());
     }
 }
