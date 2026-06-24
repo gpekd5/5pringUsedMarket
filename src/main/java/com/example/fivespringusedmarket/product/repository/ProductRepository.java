@@ -27,4 +27,19 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             @Param("deletedStatus") ProductStatus deletedStatus,
             Pageable pageable
     );
+
+    @Query("""
+            SELECT p FROM Product p
+            WHERE p.seller.id = :memberId
+              AND p.status != :deletedStatus
+              AND (:status IS NULL OR p.status = :status)
+            """)
+    Page<Product> findMyProducts(
+            @Param("memberId") Long memberId,
+            @Param("status") ProductStatus status,
+            @Param("deletedStatus") ProductStatus deletedStatus,
+            Pageable pageable
+    );
+
+    long countBySellerIdAndStatusNot(Long sellerId, ProductStatus status);
 }
