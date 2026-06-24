@@ -41,7 +41,7 @@ public class ChatMessage {
     private Member sender;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 10)
+    @Column(nullable = false, length = 20)
     private MessageType type;
 
     @Column(nullable = false, columnDefinition = "TEXT")
@@ -84,6 +84,17 @@ public class ChatMessage {
         message.sender = null;
         message.type = MessageType.LEAVE;
         message.content = nickname + "님이 퇴장했습니다.";
+        return message;
+    }
+    /*
+      문의 상태 변경 시스템 메시지를 생성한다.
+     */
+    public static ChatMessage createSystem(ChatRoom chatRoom, String content) {
+        ChatMessage message = new ChatMessage();
+        message.chatRoom = chatRoom;
+        message.sender = null;
+        message.type = MessageType.SYSTEM;
+        message.content = content;
         return message;
     }
 }
