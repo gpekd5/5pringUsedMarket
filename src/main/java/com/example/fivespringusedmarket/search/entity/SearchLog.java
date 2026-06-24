@@ -34,4 +34,8 @@ public class SearchLog extends BaseEntity {
         this.member = member;
         this.keyword = keyword;
     }
+
+    public static SearchLog create(Member member, String keyword) {
+        return new SearchLog(member, keyword);
+    }
 }
