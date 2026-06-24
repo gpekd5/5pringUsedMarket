@@ -1,12 +1,9 @@
 package com.example.fivespringusedmarket.chat.controller;
 
-import com.example.fivespringusedmarket.chat.entity.CsStatus;
+import com.example.fivespringusedmarket.chat.dto.response.AdminEnterResponse;
 import com.example.fivespringusedmarket.chat.service.AdminChatService;
-import com.example.fivespringusedmarket.common.exception.CustomException;
-import com.example.fivespringusedmarket.common.exception.ErrorCode;
 import com.example.fivespringusedmarket.common.response.ApiResponse;
 import com.example.fivespringusedmarket.common.security.AuthMember;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
