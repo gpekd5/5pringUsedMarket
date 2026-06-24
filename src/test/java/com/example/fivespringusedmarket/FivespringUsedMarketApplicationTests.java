@@ -11,7 +11,8 @@ import org.springframework.boot.test.context.SpringBootTest;
         "spring.datasource.driver-class-name=org.h2.Driver",
         "spring.jpa.hibernate.ddl-auto=create-drop",
         "jwt.secret=12345678901234567890123456789012",
-        "jwt.access-token-expiration=3600000"
+        "jwt.access-token-expiration=1800000",
+        "jwt.refresh-token-expiration=1209600000"
 })
 class FivespringUsedMarketApplicationTests {
 
