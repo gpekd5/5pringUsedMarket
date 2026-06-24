@@ -28,13 +28,16 @@ public class JwtUtil {
 
     private final String secret;
     private final long accessTokenExpiration;
+    private final long refreshTokenExpiration;
 
     public JwtUtil(
             @Value("${jwt.secret:}") String secret,
-            @Value("${jwt.access-token-expiration:3600000}") long accessTokenExpiration
+            @Value("${jwt.access-token-expiration:1800000}") long accessTokenExpiration,
+            @Value("${jwt.refresh-token-expiration:1209600000}") long refreshTokenExpiration
     ) {
         this.secret = secret;
         this.accessTokenExpiration = accessTokenExpiration;
+        this.refreshTokenExpiration = refreshTokenExpiration;
     }
 
     public String createAccessToken(Member member) {
