@@ -14,6 +14,7 @@ import com.example.fivespringusedmarket.chat.repository.ChatRoomRepository;
 import com.example.fivespringusedmarket.common.exception.CustomException;
 import com.example.fivespringusedmarket.common.exception.ErrorCode;
 import com.example.fivespringusedmarket.member.entity.Member;
+import com.example.fivespringusedmarket.member.entity.MemberRole;
 import com.example.fivespringusedmarket.product.entity.Product;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -50,6 +51,10 @@ public class ChatService {
 
         Member seller = product.getSeller();
         Member buyer = chatRoomCommonMethod.getMemberOrThrow(buyerId);
+        //관리자 구매제한
+        if (buyer.getRole() == MemberRole.ADMIN) {
+            throw new CustomException(ErrorCode.ADMIN_CANNOT_CHAT);
+        }
 
         Optional<ChatRoom> existingRoom = chatRoomRepository.findTradeChatRoom(buyerId, seller.getId(), product.getId());
         if (existingRoom.isPresent()) {
