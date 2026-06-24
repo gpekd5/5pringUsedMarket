@@ -3,7 +3,6 @@ package com.example.fivespringusedmarket.product.controller;
 import com.example.fivespringusedmarket.common.response.ApiResponse;
 import com.example.fivespringusedmarket.common.security.AuthMember;
 import com.example.fivespringusedmarket.product.dto.CreateProductRequest;
-import com.example.fivespringusedmarket.product.dto.DeleteProductResponse;
 import com.example.fivespringusedmarket.product.dto.ProductResponse;
 import com.example.fivespringusedmarket.product.dto.UpdateProductRequest;
 import com.example.fivespringusedmarket.product.dto.ProductPageResponse;

@@ -5,7 +5,6 @@ import com.example.fivespringusedmarket.common.exception.ErrorCode;
 import com.example.fivespringusedmarket.member.entity.Member;
 import com.example.fivespringusedmarket.member.repository.MemberRepository;
 import com.example.fivespringusedmarket.product.dto.CreateProductRequest;
-import com.example.fivespringusedmarket.product.dto.DeleteProductResponse;
 import com.example.fivespringusedmarket.product.dto.ProductResponse;
 import com.example.fivespringusedmarket.product.dto.UpdateProductRequest;
 import com.example.fivespringusedmarket.product.dto.ProductListItemResponse;
