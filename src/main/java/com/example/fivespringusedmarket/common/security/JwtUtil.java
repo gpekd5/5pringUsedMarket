@@ -84,7 +84,7 @@ public class JwtUtil {
 
     public Long extractMemberIdFromRefreshToken(String refreshToken) {
         Claims claims = parseRefreshTokenClaims(refreshToken);
-        validateTokenType(claims, REFRESH_TOKEN_TYPE);
+        validateTokenType(claims, REFRESH_TOKEN_TYPE, ErrorCode.INVALID_REFRESH_TOKEN);
 
         Long memberId = claims.get(MEMBER_ID_CLAIM, Long.class);
         if (memberId == null) {
@@ -92,6 +92,20 @@ public class JwtUtil {
         }
 
         return memberId;
+    }
+
+    public long getRemainingExpirationMillis(String accessToken) {
+        Claims claims = parseAccessTokenClaims(accessToken);
+        validateTokenType(claims, ACCESS_TOKEN_TYPE, ErrorCode.INVALID_TOKEN);
+
+        Date expiration = claims.getExpiration();
+        long remainingMillis = expiration.getTime() - System.currentTimeMillis();
+
+        if (remainingMillis <= 0) {
+            throw new CustomException(ErrorCode.EXPIRED_TOKEN);
+        }
+
+        return remainingMillis;
     }
 
     public boolean isValidToken(String token) {
@@ -141,11 +155,21 @@ public class JwtUtil {
         }
     }
 
-    private void validateTokenType(Claims claims, String expectedTokenType) {
+    private Claims parseAccessTokenClaims(String accessToken) {
+        try {
+            return parseClaims(accessToken);
+        } catch (ExpiredJwtException exception) {
+            throw new CustomException(ErrorCode.EXPIRED_TOKEN);
+        } catch (JwtException | IllegalArgumentException exception) {
+            throw new CustomException(ErrorCode.INVALID_TOKEN);
+        }
+    }
+
+    private void validateTokenType(Claims claims, String expectedTokenType, ErrorCode errorCode) {
         String tokenType = claims.get(TOKEN_TYPE_CLAIM, String.class);
 
         if (!expectedTokenType.equals(tokenType)) {
-            throw new CustomException(ErrorCode.INVALID_REFRESH_TOKEN);
+            throw new CustomException(errorCode);
         }
     }
 
