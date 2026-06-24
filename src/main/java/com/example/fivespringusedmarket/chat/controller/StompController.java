@@ -30,10 +30,10 @@ public class StompController {
 
     /**
      채팅방 메시지를 수신하고 type에 따라 처리를 분기한다.
-     클라이언트 전송 경로: /pub/chat/{roomId}
-     브로드캐스트 경로: /sub/chat/{roomId}
+     클라이언트 전송 경로: /pub/chat/rooms/{roomId}/messages
+     브로드캐스트 경로: /sub/chat/rooms/{roomId}
      */
-    @MessageMapping("/chat/{roomId}")
+    @MessageMapping("/chat/rooms/{roomId}/messages")
     public void handleMessage(
             @DestinationVariable Long roomId,
             @Payload ChatSendRequest request,
@@ -58,7 +58,7 @@ public class StompController {
             }
         };
 
-        messagingTemplate.convertAndSend("/sub/chat/" + roomId, broadcast);
+        messagingTemplate.convertAndSend("/sub/chat/rooms/" + roomId, broadcast);
     }
 }
 
