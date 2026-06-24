@@ -37,6 +37,8 @@ public class SecurityConfig {
                         .accessDeniedHandler(jwtAccessDeniedHandler)
                 )
                 .authorizeHttpRequests(auth -> auth
+                        // WebSocket은 STOMP ChannelInterceptor에서 자체 인증하므로 HTTP 레벨에서는 열어둔다.
+                        .requestMatchers("/ws-chat/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/signup", "/api/auth/login").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/products").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/products/{productId}").permitAll()
