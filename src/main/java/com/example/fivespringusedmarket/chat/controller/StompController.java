@@ -1,6 +1,8 @@
 package com.example.fivespringusedmarket.chat.controller;
 
 import com.example.fivespringusedmarket.chat.dto.request.ChatSendRequest;
+import com.example.fivespringusedmarket.common.exception.CustomException;
+import com.example.fivespringusedmarket.common.exception.ErrorCode;
 import com.example.fivespringusedmarket.chat.dto.response.ChatMessageBroadcast;
 import com.example.fivespringusedmarket.chat.service.StompService;
 import com.example.fivespringusedmarket.common.config.StompSessionRegistry;
@@ -56,6 +58,8 @@ public class StompController {
                 sessionRegistry.unregister(sessionId);
                 yield stompService.leaveRoom(roomId, memberId);
             }
+            // SYSTEM은 서버에서만 생성하므로 클라이언트가 보내면 거부
+            case SYSTEM -> throw new CustomException(ErrorCode.INVALID_MESSAGE_TYPE);
         };
 
         messagingTemplate.convertAndSend("/sub/chat/rooms/" + roomId, broadcast);

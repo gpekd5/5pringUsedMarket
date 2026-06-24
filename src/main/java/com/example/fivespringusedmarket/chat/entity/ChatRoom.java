@@ -83,14 +83,17 @@ public class ChatRoom extends BaseEntity {
 
     /*
      CS 상태를 전이한다.
-     허용 전이: WAITING→IN_PROGRESS, IN_PROGRESS→WAITING, IN_PROGRESS→COMPLETED
-     허용하지 않는 전이: WAITING→COMPLETED, COMPLETED→모든 상태
+     허용 전이: WAITING→IN_PROGRESS, IN_PROGRESS→COMPLETED
+     허용하지 않는 전이: WAITING→COMPLETED, IN_PROGRESS→WAITING, COMPLETED→모든 상태
      */
     public void changeCsStatus(CsStatus newStatus) {
         if (this.csStatus == CsStatus.COMPLETED) {
             throw new CustomException(ErrorCode.INVALID_STATUS_TRANSITION);
         }
         if (this.csStatus == CsStatus.WAITING && newStatus == CsStatus.COMPLETED) {
+            throw new CustomException(ErrorCode.INVALID_STATUS_TRANSITION);
+        }
+        if (this.csStatus == CsStatus.IN_PROGRESS && newStatus == CsStatus.WAITING) {
             throw new CustomException(ErrorCode.INVALID_STATUS_TRANSITION);
         }
         this.csStatus = newStatus;
