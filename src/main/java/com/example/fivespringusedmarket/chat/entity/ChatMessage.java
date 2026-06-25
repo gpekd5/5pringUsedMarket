@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 /**
  * 채팅 메시지를 저장하는 JPA 엔티티다.
  * ChatRoom을 단방향 참조한다(ChatRoom에서 역방향 컬렉션 없음).
- * type 필드로 TALK / ENTER / LEAVE를 구분한다.
+ * type 필드로 TALK / ENTER / SYSTEM 을 구분한다
  * sender가 null이면 시스템 메시지(ENTER / LEAVE)다.
  * (chat_room_id, id DESC) 복합 인덱스로 커서 페이징을 최적화한다.
  */
@@ -35,13 +35,12 @@ public class ChatMessage {
     @JoinColumn(name = "chat_room_id", nullable = false)
     private ChatRoom chatRoom;
 
-    // nullable — ENTER / LEAVE 시스템 메시지는 null이다.
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "sender_id")
     private Member sender;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 10)
+    @Column(nullable = false, length = 20)
     private MessageType type;
 
     @Column(nullable = false, columnDefinition = "TEXT")
@@ -63,27 +62,15 @@ public class ChatMessage {
         return message;
     }
 
-    /**
-     * 입장 시스템 메시지를 생성한다.
+    /*
+      문의 상태 변경 시스템 메시지를 생성한다.
      */
-    public static ChatMessage createEnter(ChatRoom chatRoom, String nickname) {
+    public static ChatMessage createSystem(ChatRoom chatRoom, String content) {
         ChatMessage message = new ChatMessage();
         message.chatRoom = chatRoom;
         message.sender = null;
-        message.type = MessageType.ENTER;
-        message.content = nickname + "님이 입장했습니다.";
-        return message;
-    }
-
-    /**
-     * 퇴장 시스템 메시지를 생성한다.
-     */
-    public static ChatMessage createLeave(ChatRoom chatRoom, String nickname) {
-        ChatMessage message = new ChatMessage();
-        message.chatRoom = chatRoom;
-        message.sender = null;
-        message.type = MessageType.LEAVE;
-        message.content = nickname + "님이 퇴장했습니다.";
+        message.type = MessageType.SYSTEM;
+        message.content = content;
         return message;
     }
 }

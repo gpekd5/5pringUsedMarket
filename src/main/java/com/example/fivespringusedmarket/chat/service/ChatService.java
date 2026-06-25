@@ -1,5 +1,6 @@
 package com.example.fivespringusedmarket.chat.service;
 
+import com.example.fivespringusedmarket.chat.common.ChatRoomCommonMethod;
 import com.example.fivespringusedmarket.chat.dto.request.CsChatRoomCreateRequest;
 import com.example.fivespringusedmarket.chat.dto.request.TradeChatRoomCreateRequest;
 import com.example.fivespringusedmarket.chat.dto.response.*;
@@ -13,9 +14,8 @@ import com.example.fivespringusedmarket.chat.repository.ChatRoomRepository;
 import com.example.fivespringusedmarket.common.exception.CustomException;
 import com.example.fivespringusedmarket.common.exception.ErrorCode;
 import com.example.fivespringusedmarket.member.entity.Member;
-import com.example.fivespringusedmarket.member.repository.MemberRepository;
+import com.example.fivespringusedmarket.member.entity.MemberRole;
 import com.example.fivespringusedmarket.product.entity.Product;
-import com.example.fivespringusedmarket.product.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -35,12 +35,11 @@ public class ChatService {
     private final ChatRoomRepository chatRoomRepository;
     private final ChatMemberRepository chatMemberRepository;
     private final ChatMessageRepository chatMessageRepository;
-    private final ProductRepository productRepository;
-    private final MemberRepository memberRepository;
+    private final ChatRoomCommonMethod chatRoomCommonMethod;
 
     @Transactional
     public TradeChatRoomCreateResponse findOrCreateTradeRoom(Long buyerId, TradeChatRoomCreateRequest request) {
-        Product product = getProductOrThrow(request.productId());
+        Product product = chatRoomCommonMethod.getProductOrThrow(request.productId());
 
         if (product.getSeller().getId().equals(buyerId)) {
             throw new CustomException(ErrorCode.PRODUCT_OWNER_CANNOT_CHAT);
@@ -50,8 +49,12 @@ public class ChatService {
             throw new CustomException(ErrorCode.PRODUCT_SOLD_OUT);
         }
 
-        Member seller = product.getSeller();
-        Member buyer = getMemberOrThrow(buyerId);
+        Member seller = chatRoomCommonMethod.getMemberOrThrow(product.getSeller().getId());
+        Member buyer = chatRoomCommonMethod.getMemberOrThrow(buyerId);
+        //관리자 구매제한
+        if (buyer.getRole() == MemberRole.ADMIN) {
+            throw new CustomException(ErrorCode.ADMIN_CANNOT_CHAT);
+        }
 
         Optional<ChatRoom> existingRoom = chatRoomRepository.findTradeChatRoom(buyerId, seller.getId(), product.getId());
         if (existingRoom.isPresent()) {
@@ -71,7 +74,7 @@ public class ChatService {
      */
     @Transactional
     public CsChatRoomCreateResponse createCsRoom(Long customerId, CsChatRoomCreateRequest request) {
-        Member customer = getMemberOrThrow(customerId);
+        Member customer = chatRoomCommonMethod.getMemberOrThrow(customerId);
         //초기상태는 WAITING
         ChatRoom room = chatRoomRepository.save(ChatRoom.createCsRoom(request.title()));
 
@@ -117,9 +120,9 @@ public class ChatService {
      */
     @Transactional(readOnly = true)
     public ChatRoomDetailResponse getChatRoomDetail(Long memberId, Long roomId) {
-        ChatRoom room = getChatRoomOrThrow(roomId);
+        ChatRoom room = chatRoomCommonMethod.getChatRoomOrThrow(roomId);
 
-        validateChatMember(roomId, memberId);
+        chatRoomCommonMethod.validateChatMember(roomId, memberId);
 
         List<ChatMember> roomMembers = chatMemberRepository.findByChatRoomIdWithMember(roomId);
 
@@ -157,7 +160,6 @@ public class ChatService {
                 nextCursorId
         );
     }
-
     /*
       채팅방 읽음 처리
       현재 사용자의 unreadCount를 0으로 리셋하고 lastReadMessageId를 최신 메시지 ID로 갱신한다.
@@ -173,26 +175,5 @@ public class ChatService {
                     chatMember.updateLastReadMessageId(latestMessage.getId());
                     chatMember.resetUnreadCount();
                 });
-    }
-
-    private Product getProductOrThrow(Long productId) {
-        return productRepository.findById(productId)
-                .orElseThrow(() -> new CustomException(ErrorCode.PRODUCT_NOT_FOUND));
-    }
-
-    private Member getMemberOrThrow(Long memberId) {
-        return memberRepository.findById(memberId)
-                .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
-    }
-
-    private ChatRoom getChatRoomOrThrow(Long roomId) {
-        return chatRoomRepository.findById(roomId)
-                .orElseThrow(() -> new CustomException(ErrorCode.CHAT_ROOM_NOT_FOUND));
-    }
-
-    private void validateChatMember(Long roomId, Long memberId) {
-        if (!chatMemberRepository.existsByChatRoomIdAndMemberId(roomId, memberId)) {
-            throw new CustomException(ErrorCode.CHAT_ACCESS_DENIED);
-        }
     }
 }
