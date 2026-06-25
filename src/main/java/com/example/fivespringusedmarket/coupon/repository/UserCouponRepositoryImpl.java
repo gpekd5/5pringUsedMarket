@@ -68,6 +68,7 @@ public class UserCouponRepositoryImpl implements UserCouponRepositoryCustom {
                         userCoupon.member.id.eq(memberId),
                         usedCondition(used)
                 )
+                .orderBy(userCoupon.issuedAt.desc(), userCoupon.id.desc())
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
                 .fetch();
