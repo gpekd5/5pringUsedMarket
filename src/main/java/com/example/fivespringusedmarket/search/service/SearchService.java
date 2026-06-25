@@ -61,6 +61,19 @@ public class SearchService {
                 .toList();
     }
 
+    @Transactional
+    public void deleteRecentSearch(Long memberId, Long searchLogId) {
+        SearchLog searchLog = searchLogRepository.findById(searchLogId).orElseThrow(
+                () -> new CustomException(ErrorCode.SEARCH_LOG_NOT_FOUND)
+        );
+
+        if (!searchLog.getMember().getId().equals(memberId)) {
+            throw new CustomException(ErrorCode.FORBIDDEN_SEARCH_LOG);
+        }
+        
+        searchLogRepository.delete(searchLog);
+    }
+
     private void saveSearchLog(Member member, String keyword) {
         if (member == null || !StringUtils.hasText(keyword)) {
             return;

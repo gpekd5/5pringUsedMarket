@@ -50,6 +50,10 @@ public class SearchFacade {
         return searchService.getRecentSearches(memberId);
     }
 
+    public void deleteRecentSearch(Long memberId, Long searchLogId) {
+        searchService.deleteRecentSearch(memberId, searchLogId);
+    }
+
     private Member findMemberOrNull(Long memberId) {
         if (memberId == null) {
             return null;

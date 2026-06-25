@@ -12,9 +12,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -50,6 +48,15 @@ public class SearchController {
     ) {
         List<RecentSearchResponse> response = searchFacade.getRecentSearches(authMember.memberId());
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @DeleteMapping("/api/search/recent/{searchLogId}")
+    public ResponseEntity<ApiResponse<Void>> deleteRecentSearch(
+            @AuthenticationPrincipal AuthMember authMember,
+            @PathVariable Long searchLogId
+    ) {
+        searchFacade.deleteRecentSearch(authMember.memberId(), searchLogId);
+        return ResponseEntity.ok(ApiResponse.success("기록이 삭제되었습니다.", null));
     }
 
 
