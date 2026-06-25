@@ -5,6 +5,7 @@ import com.example.fivespringusedmarket.common.security.AuthMember;
 import com.example.fivespringusedmarket.coupon.dto.CouponResponse;
 import com.example.fivespringusedmarket.coupon.dto.IssueCouponResponse;
 import com.example.fivespringusedmarket.coupon.service.CouponService;
+import com.example.fivespringusedmarket.coupon.service.LockService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -24,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class CouponController {
 
     private final CouponService couponService;
+    private final LockService lockService;
 
     @GetMapping
     public ResponseEntity<ApiResponse<Page<CouponResponse>>> getCoupons(
@@ -38,7 +40,7 @@ public class CouponController {
             @PathVariable Long couponId,
             @AuthenticationPrincipal AuthMember authMember
     ) {
-        IssueCouponResponse result = couponService.issueCoupon(couponId, authMember.memberId());
+        IssueCouponResponse result = lockService.issueCouponWithLock(couponId, authMember.memberId());
         return ResponseEntity.ok(ApiResponse.success("쿠폰 발급에 성공했습니다.", result));
     }
 }
