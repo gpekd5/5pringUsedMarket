@@ -18,6 +18,11 @@ import com.example.fivespringusedmarket.auth.repository.RefreshTokenRedisReposit
 import com.example.fivespringusedmarket.common.security.JwtUtil;
 import com.example.fivespringusedmarket.member.entity.Member;
 import com.example.fivespringusedmarket.member.repository.MemberRepository;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
+import java.nio.charset.StandardCharsets;
+import java.util.Date;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -44,6 +49,7 @@ import org.springframework.test.web.servlet.ResultActions;
 class AuthControllerTest {
 
     private static final String BEARER_PREFIX = "Bearer ";
+    private static final String JWT_SECRET = "12345678901234567890123456789012";
     private static final long REFRESH_TOKEN_EXPIRATION = 1_209_600_000L;
 
     @Autowired
@@ -147,6 +153,37 @@ class AuthControllerTest {
     }
 
     @Test
+    void reissueIgnoresExpiredAccessTokenAuthorizationHeader() throws Exception {
+        // given
+        Member member = saveMember("expired-header@test.com", "Password123!", "만료헤더회원");
+        String refreshToken = jwtUtil.createRefreshToken(member);
+        String expiredAccessToken = createExpiredAccessToken(member);
+        when(refreshTokenRedisRepository.rotateIfMatches(
+                eq(member.getId()),
+                eq(refreshToken),
+                anyString(),
+                eq(REFRESH_TOKEN_EXPIRATION)
+        )).thenReturn(true);
+
+        String requestBody = """
+                {
+                  "refreshToken": "%s"
+                }
+                """.formatted(refreshToken);
+
+        // when
+        ResultActions resultActions = mockMvc.perform(post("/api/auth/reissue")
+                .header("Authorization", BEARER_PREFIX + expiredAccessToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody));
+
+        // then
+        resultActions.andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("토큰이 재발급되었습니다."));
+    }
+
+    @Test
     void reissueFailsWhenRefreshTokenDoesNotMatchStoredToken() throws Exception {
         // given
         Member member = saveMember("mismatch@test.com", "Password123!", "불일치회원");
@@ -245,6 +282,23 @@ class AuthControllerTest {
         return memberRepository.saveAndFlush(
                 Member.create(email, passwordEncoder.encode(rawPassword), nickname)
         );
+    }
+
+    private String createExpiredAccessToken(Member member) {
+        Date issuedAt = new Date(System.currentTimeMillis() - 3_600_000);
+        Date expiration = new Date(System.currentTimeMillis() - 1_800_000);
+
+        return Jwts.builder()
+                .id(UUID.randomUUID().toString())
+                .subject(String.valueOf(member.getId()))
+                .claim("memberId", member.getId())
+                .claim("email", member.getEmail())
+                .claim("role", member.getRole().name())
+                .claim("tokenType", "ACCESS")
+                .issuedAt(issuedAt)
+                .expiration(expiration)
+                .signWith(Keys.hmacShaKeyFor(JWT_SECRET.getBytes(StandardCharsets.UTF_8)))
+                .compact();
     }
 
     @TestConfiguration
