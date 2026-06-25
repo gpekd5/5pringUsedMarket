@@ -9,6 +9,7 @@ import com.example.fivespringusedmarket.product.entity.ProductCategory;
 import com.example.fivespringusedmarket.product.entity.ProductStatus;
 import com.example.fivespringusedmarket.search.dto.ProductSearchCondition;
 import com.example.fivespringusedmarket.search.dto.ProductSearchSortType;
+import com.example.fivespringusedmarket.search.dto.RecentSearchResponse;
 import com.example.fivespringusedmarket.search.entity.SearchLog;
 import com.example.fivespringusedmarket.search.repository.ProductSearchRepository;
 import com.example.fivespringusedmarket.search.repository.SearchLogRepository;
@@ -18,6 +19,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+
+import java.util.List;
 
 /**
  * 상품 검색 비즈니스 로직을 처리하는 Service입니다.
@@ -49,6 +52,13 @@ public class SearchService {
         Page<ProductListItemResponse> products = productSearchRepository.search(condition, pageable);
 
         return ProductPageResponse.of(products);
+    }
+
+    public List<RecentSearchResponse> getRecentSearches(Long memberId) {
+        return searchLogRepository.findTop10ByMemberIdOrderByCreatedAtDesc(memberId)
+                .stream()
+                .map(RecentSearchResponse::from)
+                .toList();
     }
 
     private void saveSearchLog(Member member, String keyword) {

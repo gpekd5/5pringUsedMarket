@@ -4,13 +4,13 @@ import com.example.fivespringusedmarket.common.exception.CustomException;
 import com.example.fivespringusedmarket.common.exception.ErrorCode;
 import com.example.fivespringusedmarket.member.entity.Member;
 import com.example.fivespringusedmarket.member.repository.MemberRepository;
-import com.example.fivespringusedmarket.product.dto.ProductListItemResponse;
 import com.example.fivespringusedmarket.product.dto.ProductPageResponse;
-import com.example.fivespringusedmarket.search.dto.ProductSearchCondition;
+import com.example.fivespringusedmarket.search.dto.RecentSearchResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 /**
  * 검색 기능에서 다른 도메인과의 조합을 담당하는 Facade입니다.
@@ -44,6 +44,10 @@ public class SearchFacade {
                 sort,
                 pageable
         );
+    }
+
+    public List<RecentSearchResponse> getRecentSearches(Long memberId) {
+        return searchService.getRecentSearches(memberId);
     }
 
     private Member findMemberOrNull(Long memberId) {
