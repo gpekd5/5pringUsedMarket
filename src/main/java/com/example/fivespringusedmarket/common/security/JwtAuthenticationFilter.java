@@ -9,6 +9,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
+import java.util.Set;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -24,6 +25,12 @@ import org.springframework.web.filter.OncePerRequestFilter;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final String ROLE_PREFIX = "ROLE_";
+    private static final String POST_METHOD = "POST";
+    private static final Set<String> PUBLIC_AUTH_PATHS = Set.of(
+            "/api/auth/signup",
+            "/api/auth/login",
+            "/api/auth/reissue"
+    );
 
     private final JwtUtil jwtUtil;
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
@@ -40,6 +47,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         this.jwtAuthenticationEntryPoint = jwtAuthenticationEntryPoint;
         this.bearerTokenResolver = bearerTokenResolver;
         this.accessTokenBlacklistRepository = accessTokenBlacklistRepository;
+    }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        return POST_METHOD.equals(request.getMethod()) && PUBLIC_AUTH_PATHS.contains(request.getRequestURI());
     }
 
     @Override
