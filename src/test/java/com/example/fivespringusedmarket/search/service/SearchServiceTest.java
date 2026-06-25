@@ -15,6 +15,8 @@ import com.example.fivespringusedmarket.product.entity.ProductImage;
 import com.example.fivespringusedmarket.product.entity.ProductStatus;
 import com.example.fivespringusedmarket.product.repository.ProductImageRepository;
 import com.example.fivespringusedmarket.product.repository.ProductRepository;
+import com.example.fivespringusedmarket.search.dto.RecentSearchResponse;
+import com.example.fivespringusedmarket.search.entity.SearchLog;
 import com.example.fivespringusedmarket.search.repository.SearchLogRepository;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -332,4 +334,81 @@ class SearchServiceTest {
 
         return product;
     }
+
+    @Test
+    void recentSearchesReturnsDistinctKeywordsByLatestSearchOrder() throws InterruptedException {
+        // given
+        searchLogRepository.saveAndFlush(SearchLog.create(seller, "맥북"));
+        Thread.sleep(10);
+
+        searchLogRepository.saveAndFlush(SearchLog.create(seller, "아이폰"));
+        Thread.sleep(10);
+
+        searchLogRepository.saveAndFlush(SearchLog.create(seller, "키보드"));
+        Thread.sleep(10);
+
+        searchLogRepository.saveAndFlush(SearchLog.create(seller, "맥북"));
+        Thread.sleep(10);
+
+        searchLogRepository.saveAndFlush(SearchLog.create(seller, "아이폰"));
+
+        // when
+        List<RecentSearchResponse> response = searchService.getRecentSearches(seller.getId());
+
+        // then
+        assertThat(response)
+                .extracting(RecentSearchResponse::keyword)
+                .containsExactly("아이폰", "맥북", "키보드");
+    }
+
+    @Test
+    void recentSearchesReturnsOnlyTop10DistinctKeywords() throws InterruptedException {
+        // given
+        for (int i = 1; i <= 12; i++) {
+            searchLogRepository.saveAndFlush(SearchLog.create(seller, "검색어" + i));
+            Thread.sleep(10);
+        }
+
+        // when
+        List<RecentSearchResponse> response = searchService.getRecentSearches(seller.getId());
+
+        // then
+        assertThat(response).hasSize(10);
+
+        assertThat(response)
+                .extracting(RecentSearchResponse::keyword)
+                .containsExactly(
+                        "검색어12",
+                        "검색어11",
+                        "검색어10",
+                        "검색어9",
+                        "검색어8",
+                        "검색어7",
+                        "검색어6",
+                        "검색어5",
+                        "검색어4",
+                        "검색어3"
+                );
+    }
+
+    @Test
+    void recentSearchesReturnsOnlyOwnSearchLogs() {
+        // given
+        Member otherMember = memberRepository.saveAndFlush(
+                Member.create("other@test.com", "encoded-password", "다른회원")
+        );
+
+        searchLogRepository.saveAndFlush(SearchLog.create(otherMember, "다른회원검색어"));
+        searchLogRepository.saveAndFlush(SearchLog.create(seller, "내검색어"));
+
+        // when
+        List<RecentSearchResponse> response = searchService.getRecentSearches(seller.getId());
+
+        // then
+        assertThat(response)
+                .extracting(RecentSearchResponse::keyword)
+                .containsExactly("내검색어");
+    }
+
+
 }

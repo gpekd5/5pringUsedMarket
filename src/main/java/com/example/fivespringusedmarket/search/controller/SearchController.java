@@ -26,7 +26,12 @@ public class SearchController {
 
     private final SearchFacade searchFacade;
 
-    // 캐시가 적용되지 않은 QueryDsl 상품 검색 v1 API
+    /**
+     * 캐시가 적용되지 않은 상품 검색 v1 API입니다.
+     *
+     * <p>비로그인 사용자도 검색할 수 있으므로 authMember는 null일 수 있습니다.
+     * 로그인 사용자인 경우에만 memberId를 전달하여 검색어 저장 및 인기검색어 집계를 수행합니다.</p>
+     */
     @GetMapping("/api/v1/products/search")
     public ResponseEntity<ApiResponse<ProductPageResponse>> searchProductV1(
             @AuthenticationPrincipal AuthMember authMember,
@@ -43,6 +48,12 @@ public class SearchController {
     }
 
 
+    /**
+     * 로그인 사용자의 최근 검색어 목록을 조회합니다.
+     *
+     * <p>최근 검색어는 사용자별 데이터이므로 인증 사용자 정보가 필요합니다.
+     * memberId는 요청 값으로 받지 않고 인증 Principal에서 가져옵니다.</p>
+     */
     @GetMapping("/api/search/recent")
     public ResponseEntity<ApiResponse<List<RecentSearchResponse>>> getRecentSearches(
             @AuthenticationPrincipal AuthMember authMember
@@ -51,6 +62,11 @@ public class SearchController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
+    /**
+     * 로그인 사용자의 최근 검색어를 삭제합니다.
+     *
+     * <p>삭제 권한 검증은 Service 계층에서 인증 사용자 ID와 검색 기록의 memberId를 비교하여 처리합니다.</p>
+     */
     @DeleteMapping("/api/search/recent/{searchLogId}")
     public ResponseEntity<ApiResponse<Void>> deleteRecentSearch(
             @AuthenticationPrincipal AuthMember authMember,
@@ -60,6 +76,12 @@ public class SearchController {
         return ResponseEntity.ok(ApiResponse.success("기록이 삭제되었습니다.", null));
     }
 
+    /**
+     * 인기검색어 Top 10 목록을 조회합니다.
+     *
+     * <p>인기검색어는 전체 사용자에게 노출되는 공개 데이터이므로 인증이 필요하지 않습니다.
+     * 단, 집계 기준은 로그인 사용자의 keyword 검색 기록입니다.</p>
+     */
     @GetMapping("/api/search/popular")
     public ResponseEntity<ApiResponse<List<PopularSearchResponse>>> getPopularSearches() {
         List<PopularSearchResponse> responses = searchFacade.getPopularSearches();
