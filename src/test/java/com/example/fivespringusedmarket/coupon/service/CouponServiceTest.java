@@ -25,7 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(
         properties = {
-                "spring.datasource.url=jdbc:h2:mem:coupon-service-test;DB_CLOSE_DELAY=-1",
+                "spring.datasource.url=jdbc:h2:mem:coupon-service-test",
                 "spring.datasource.driver-class-name=org.h2.Driver",
                 "spring.jpa.hibernate.ddl-auto=create-drop",
                 "jwt.secret=12345678901234567890123456789012",
@@ -36,6 +36,9 @@ class CouponServiceTest {
 
     @Autowired
     private CouponService couponService;
+
+    @Autowired
+    private LockService lockService;
 
     @Autowired
     private CouponRepository couponRepository;
@@ -96,6 +99,52 @@ class CouponServiceTest {
 
         assertThat(issuedInDb)
                 .as("실제 발급된 쿠폰 수가 재고(%d)를 초과하면 안 된다", totalQty)
+                .isLessThanOrEqualTo(totalQty);
+    }
+
+    @Test
+    @DisplayName("Redis Lock 적용 시 선착순 쿠폰이 재고를 초과해 발급되어서는 안 된다")
+    void Redis_Lock_적용_시_재고_초과_불가() throws InterruptedException {
+        // given
+        int totalQty = 10;
+        int threadCount = 100;
+
+        Coupon coupon = createCoupon("선착순 쿠폰 (Lock)", totalQty);
+        couponRepository.save(coupon);
+        Long couponId = coupon.getId();
+
+        List<Long> memberIds = new ArrayList<>();
+        for (int i = 0; i < threadCount; i++) {
+            Member member = Member.create("lock_user" + i + "@test.com", "pw", "lock_user" + i);
+            memberIds.add(memberRepository.save(member).getId());
+        }
+
+        ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+        CyclicBarrier barrier = new CyclicBarrier(threadCount);
+        AtomicInteger successCount = new AtomicInteger(0);
+
+        // when
+        for (int i = 0; i < threadCount; i++) {
+            final Long memberId = memberIds.get(i);
+            executor.submit(() -> {
+                try {
+                    barrier.await();
+                    lockService.issueCouponWithLock(couponId, memberId);
+                    successCount.incrementAndGet();
+                } catch (Exception ignored) {
+                }
+            });
+        }
+
+        executor.shutdown();
+        executor.awaitTermination(60, TimeUnit.SECONDS);
+
+        // then
+        long issuedInDb = userCouponRepository.count();
+        System.out.println("발급 성공 수: " + successCount.get() + ", DB 저장 수: " + issuedInDb);
+
+        assertThat(issuedInDb)
+                .as("Redis Lock 적용 시 실제 발급된 쿠폰 수가 재고(%d)를 초과하면 안 된다", totalQty)
                 .isLessThanOrEqualTo(totalQty);
     }
 
