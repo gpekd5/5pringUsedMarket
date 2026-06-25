@@ -728,26 +728,6 @@ COMPLETED
 
 # 4. 검색 / 인기검색어 API
 
-## 검색 정책 요약
-* 상품 검색 API는 로그인/비로그인*사용자 모두 사용할 수 있다.
-* 비로그인 사용자는 상품 검색 결과만 조회할 수 있다.
-* 로그인 사용자가 `keyword`로 검색한 경우에만 검색어를 기록한다.
-* 검색어 기록은 두 가지 목적으로 나누어 관리한다.
-
-```text
-SearchLog DB
-→ 로그인 사용자의 최근 검색어 조회/삭제용
-
-Redis ZSet
-→ 로그인 사용자 검색어 기반 인기검색어 Top 10 조회용
-```
-
-* `keyword`가 없거나 공백 문자열인 경우 검색어를 저장하지 않는다.
-* 검색어 저장 시 앞뒤 공백은 `trim` 처리한다.
-* 동일 사용자가 같은 검색어를 여러 번 검색해도 검색 기록은 모두 저장한다.
-* 최근 검색어 조회 시에는 같은 keyword가 여러 개 있더라도 최신 기준으로 하나만 노출한다.
-* 인기검색어는 Redis ZSet의 score 기준 상위 10개만 노출한다.
-
 ## 4-1. 상품 검색 v1
 
 - Method: `GET`
@@ -767,35 +747,8 @@ Redis ZSet
 
 ### 처리 정책
 
-* 상품명 또는 설명 컬럼에 `LIKE` 검색을 수행한다.
-* 기본적으로 `DELETED` 상태의 상품은 검색 결과에 노출하지 않는다.
-* `status`가 생략되면 기본적으로 `ON_SALE` 상품을 조회한다.
-* 로그인/비로그인 사용자 모두 상품 검색이 가능하다.
-* 로그인 사용자가 `keyword`로 검색한 경우에만 검색어를 기록한다.
-* 비로그인 사용자가 검색한 경우에는 상품 검색만 수행하고 검색어 기록은 저장하지 않는다.
-* `keyword`가 없거나 공백 문자열이면 검색어 기록을 저장하지 않는다.
-* 검색어 기록 저장 시 앞뒤 공백은 제거한다.
-* 로그인 사용자의 검색어는 `search_logs`에 저장한다.
-* 로그인 사용자의 검색어는 Redis ZSet에도 반영하여 인기검색어 집계에 사용한다.
-
-### 검색어 기록 처리
-
-```text
-비로그인 사용자 검색
-→ 상품 검색 가능
-→ search_logs 저장 안 함
-→ Redis 인기검색어 집계 안 함
-
-로그인 사용자 검색 + keyword 있음
-→ 상품 검색 가능
-→ search_logs 저장
-→ Redis ZSet score 증가
-
-로그인 사용자 검색 + keyword 없음
-→ 상품 검색 가능
-→ search_logs 저장 안 함
-→ Redis 인기검색어 집계 안 함
-```
+- 상품명 또는 설명 컬럼에 `LIKE` 검색을 수행한다.
+- 로그인 사용자가 keyword로 검색하면 `search_logs`에 저장한다.
 
 ---
 
@@ -808,13 +761,10 @@ Redis ZSet
 
 ### 처리 정책
 
-* v1과 동일한 검색 결과를 반환한다.
-* 동일한 검색 조건의 반복 요청은 Cache에서 응답할 수 있다.
-* 캐시 Key는 keyword, category, status, sort, page, size를 포함해야 한다.
-* 상품 수정/삭제/상태 변경 시 캐시 무효화 전략을 고려한다.
-* 검색어 기록 저장 정책은 v1과 동일하다.
-* 로그인 사용자가 `keyword`로 검색한 경우에만 `search_logs` 저장 및 Redis 인기검색어 집계를 수행한다.
-* 비로그인 검색은 검색어 기록과 인기검색어 집계에 반영하지 않는다.
+- v1과 동일한 검색 결과를 반환한다.
+- 동일한 검색 조건의 반복 요청은 Local Cache에서 응답한다.
+- 캐시 Key는 keyword, category, sort, page, size를 포함해야 한다.
+- 상품 수정/삭제 시 캐시 무효화 전략을 고려한다.
 
 ---
 
@@ -826,21 +776,14 @@ Redis ZSet
 
 ### Query Parameters
 
-| 필드 | 타입 | 필수 | 설명    |
-|---|---|---|-------|
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| limit | Integer | N | 기본값 10 |
 
 ### 처리 정책
 
-* 로그인 사용자가 검색한 keyword를 기준으로 인기검색어를 집계한다.
-* 비로그인 사용자의 검색어는 인기검색어 집계에 반영하지 않는다.
-* Redis Sorted Set, ZSet을 사용한다.
-* Redis ZSet의 key는 `popular:keywords`를 사용한다.
-* 검색어는 ZSet의 member로 저장한다.
-* 검색 횟수는 ZSet의 score로 저장한다.
-* 검색어가 기록될 때마다 `ZINCRBY`를 사용해 score를 1 증가시킨다.
-* 인기검색어 조회 시 `ZREVRANGE` 또는 `reverseRangeWithScores`를 사용해 score가 높은 순서로 조회한다.
-* 인기검색어는 상위 10개만 반환한다.
-* 인기검색어가 없으면 빈 배열을 반환한다.
+- 검색어별 검색 횟수가 많은 순으로 반환한다.
+- Redis ZSet 사용 시 `ZINCRBY`, `ZREVRANGE`를 활용한다.
 
 ---
 
@@ -852,73 +795,17 @@ Redis ZSet
 
 ### Query Parameters
 
-없음
-
-### 처리 정책
-
-* 최근 검색어는 로그인 사용자 본인의 검색어만 조회한다.
-* 인증 Principal의 memberId를 기준으로 `search_logs`를 조회한다.
-* Request Body나 Query Parameter로 memberId를 받지 않는다.
-* 검색 기록은 최신순으로 조회한다.
-* 같은 keyword가 여러 번 존재하더라도 응답에는 하나만 노출한다.
-* 중복 keyword는 가장 최근 검색 기록을 기준으로 남긴다.
-* 최근 검색어는 최대 10개만 반환한다.
-* 검색 기록이 없으면 빈 배열을 반환한다.
-
-### Response
-
-```json
-{
-  "success": true,
-  "message": "요청이 성공했습니다.",
-  "data": [
-    {
-      "searchLogId": 15,
-      "keyword": "맥북",
-      "createdAt": "2026-06-25T13:00:00"
-    },
-    {
-      "searchLogId": 12,
-      "keyword": "아이폰",
-      "createdAt": "2026-06-25T12:50:00"
-    }
-  ]
-}
-```
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| limit | Integer | N | 기본값 10 |
 
 ---
 
 ## 4-5. 최근 검색어 삭제
 
-* Method: `DELETE`
-* Path: `/api/search/recent/{searchLogId}`
-* Auth: 필요
-
-### 처리 정책
-
-* 최근 검색어는 본인의 검색 기록만 삭제할 수 있다.
-* 인증 Principal의 memberId와 `search_logs.member_id`가 일치해야 한다.
-* 다른 사용자의 검색 기록 삭제 요청은 403을 반환한다.
-* 존재하지 않는 검색 기록이면 404를 반환한다.
-* 삭제 방식은 물리 삭제 또는 소프트 삭제 중 하나로 통일한다.
-
-### Response
-
-```json
-{
-  "success": true,
-  "message": "최근 검색어가 삭제되었습니다.",
-  "data": null
-}
-```
-
-### Error
-
-| Status | Code                 | 설명             |
-| ------ | -------------------- | -------------- |
-| 401    | UNAUTHORIZED         | 인증되지 않은 사용자    |
-| 403    | FORBIDDEN            | 본인의 검색 기록이 아님  |
-| 404    | SEARCH_LOG_NOT_FOUND | 검색 기록을 찾을 수 없음 |
+- Method: `DELETE`
+- Path: `/api/search/recent/{searchLogId}`
+- Auth: 필요
 
 ---
 
