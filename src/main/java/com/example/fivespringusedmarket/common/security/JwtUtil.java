@@ -25,16 +25,22 @@ public class JwtUtil {
     private static final String MEMBER_ID_CLAIM = "memberId";
     private static final String EMAIL_CLAIM = "email";
     private static final String ROLE_CLAIM = "role";
+    private static final String TOKEN_TYPE_CLAIM = "tokenType";
+    private static final String ACCESS_TOKEN_TYPE = "ACCESS";
+    private static final String REFRESH_TOKEN_TYPE = "REFRESH";
 
     private final String secret;
     private final long accessTokenExpiration;
+    private final long refreshTokenExpiration;
 
     public JwtUtil(
             @Value("${jwt.secret:}") String secret,
-            @Value("${jwt.access-token-expiration:3600000}") long accessTokenExpiration
+            @Value("${jwt.access-token-expiration:1800000}") long accessTokenExpiration,
+            @Value("${jwt.refresh-token-expiration:1209600000}") long refreshTokenExpiration
     ) {
         this.secret = secret;
         this.accessTokenExpiration = accessTokenExpiration;
+        this.refreshTokenExpiration = refreshTokenExpiration;
     }
 
     public String createAccessToken(Member member) {
@@ -49,6 +55,23 @@ public class JwtUtil {
                 .claim(MEMBER_ID_CLAIM, member.getId())
                 .claim(EMAIL_CLAIM, member.getEmail())
                 .claim(ROLE_CLAIM, member.getRole().name())
+                .claim(TOKEN_TYPE_CLAIM, ACCESS_TOKEN_TYPE)
+                .issuedAt(now)
+                .expiration(expiration)
+                .signWith(getSigningKey())
+                .compact();
+    }
+
+    public String createRefreshToken(Member member) {
+        validateSecret();
+
+        Date now = new Date();
+        Date expiration = new Date(now.getTime() + refreshTokenExpiration);
+
+        return Jwts.builder()
+                .subject(String.valueOf(member.getId()))
+                .claim(MEMBER_ID_CLAIM, member.getId())
+                .claim(TOKEN_TYPE_CLAIM, REFRESH_TOKEN_TYPE)
                 .issuedAt(now)
                 .expiration(expiration)
                 .signWith(getSigningKey())

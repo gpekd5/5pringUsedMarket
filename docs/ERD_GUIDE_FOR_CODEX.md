@@ -559,6 +559,15 @@ CREATE INDEX idx_chat_messages_member_id ON chat_messages(member_id);
 keyword, category, status, page, size, sort
 ```
 
+정렬 기준:
+
+| sort 값 | 설명 |
+|---|---|
+| `LATEST` | 최신 등록순 |
+| `OLDEST` | 오래된 등록순 |
+| `PRICE_DESC` | 가격 높은순 |
+| `PRICE_ASC` | 가격 낮은순 |
+
 ---
 
 ## 5.5 쿠폰
