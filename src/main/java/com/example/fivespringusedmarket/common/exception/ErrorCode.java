@@ -25,25 +25,28 @@ public enum ErrorCode {
     CHAT_ROOM_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 채팅방입니다."),
     CHAT_ACCESS_DENIED(HttpStatus.FORBIDDEN, "채팅방 참여자가 아닙니다."),
     NOT_CS_ROOM(HttpStatus.CONFLICT, "CS 타입이 아닌 채팅방입니다."),
-    INVALID_STATUS_TRANSITION(HttpStatus.BAD_REQUEST, "유효하지 않은 CS 상태 전이입니다."),
+    INVALID_CS_STATUS_TRANSITION(HttpStatus.BAD_REQUEST, "유효하지 않은 CS 상태 전이입니다."),
     INVALID_CHAT_ROOM_TYPE(HttpStatus.BAD_REQUEST, "type은 TRADE 또는 CS만 허용됩니다."),
     CHAT_COMPLETED(HttpStatus.BAD_REQUEST, "완료된 CS 채팅방에는 메시지를 전송할 수 없습니다."),
     CS_ALREADY_IN_PROGRESS(HttpStatus.CONFLICT, "이미 다른 관리자가 처리 중인 문의입니다."),
     INVALID_MESSAGE_TYPE(HttpStatus.BAD_REQUEST, "클라이언트에서 전송할 수 없는 메시지 타입입니다."),
     ADMIN_CANNOT_CHAT(HttpStatus.BAD_REQUEST, "관리자는 구매/판매 채팅을 할수 없습니다."),
 
-
     // Product
-	INVALID_CATEGORY(HttpStatus.BAD_REQUEST, "유효하지 않은 카테고리 값입니다."),
-	INVALID_PRICE(HttpStatus.BAD_REQUEST, "가격은 0 이상이어야 합니다."),
-	PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "해당 상품을 찾을 수 없습니다."),
-	CANNOT_MODIFY_SOLD_PRODUCT(HttpStatus.BAD_REQUEST, "판매 완료된 상품은 수정할 수 없습니다."),
+    INVALID_CATEGORY(HttpStatus.BAD_REQUEST, "유효하지 않은 카테고리 값입니다."),
+    INVALID_PRICE(HttpStatus.BAD_REQUEST, "가격은 0 이상이어야 합니다."),
+    PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "해당 상품을 찾을 수 없습니다."),
+    CANNOT_MODIFY_SOLD_PRODUCT(HttpStatus.BAD_REQUEST, "판매 완료된 상품은 수정할 수 없습니다."),
     PRODUCT_OWNER_CANNOT_CHAT(HttpStatus.BAD_REQUEST, "본인 상품에는 채팅을 시작할 수 없습니다."),
     PRODUCT_SOLD_OUT(HttpStatus.BAD_REQUEST, "판매 완료되거나 삭제된 상품입니다."),
+
+    // Search
+    SEARCH_LOG_NOT_FOUND(HttpStatus.NOT_FOUND, "해당 검색어를 찾을 수 없습니다."),
+    FORBIDDEN_SEARCH_LOG(HttpStatus.FORBIDDEN, "접근 권한이 없습니다."),
     INVALID_SEARCH_SORT_TYPE(HttpStatus.BAD_REQUEST, "유효하지 않은 정렬입니다."),
 
-	INVALID_STATUS(HttpStatus.BAD_REQUEST, "유효하지 않은 상태 값입니다."),
-	INVALID_CS_STATUS_TRANSITION(HttpStatus.BAD_REQUEST, "허용되지 않는 상태 전이입니다.");
+    INVALID_STATUS(HttpStatus.BAD_REQUEST, "유효하지 않은 상태 값입니다."),
+    INVALID_STATUS_TRANSITION(HttpStatus.BAD_REQUEST, "허용되지 않는 상태 전이입니다.");
 
     private final HttpStatus httpStatus;
     private final String message;
