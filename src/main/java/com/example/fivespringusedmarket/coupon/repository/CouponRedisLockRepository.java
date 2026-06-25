@@ -21,6 +21,11 @@ public class CouponRedisLockRepository {
             "return redis.call('del', KEYS[1]) " +
             "else return 0 end";
 
+    // 애플리케이션 시작 시 한 번만 생성 — 인스턴스 내부 SHA 캐시를 유지해
+    // 두 번째 호출부터 EVAL(전체 스크립트 전송) 대신 EVALSHA(해시값만 전송)를 사용한다.
+    private static final DefaultRedisScript<Long> UNLOCK_REDIS_SCRIPT =
+            new DefaultRedisScript<>(UNLOCK_SCRIPT, Long.class);
+
     private final StringRedisTemplate stringRedisTemplate;
 
     /**
@@ -45,7 +50,7 @@ public class CouponRedisLockRepository {
      */
     public void unlock(String key, String value) {
         // 다른 스레드가 획득한 Lock 을 실수로 해제하지 않도록 value 검증 후 삭제
-        DefaultRedisScript<Long> script = new DefaultRedisScript<>(UNLOCK_SCRIPT, Long.class);
-        stringRedisTemplate.execute(script, List.of(key), value);
+        // UNLOCK_REDIS_SCRIPT 는 static final — SHA 캐시 재사용으로 EVALSHA 명령 전송
+        stringRedisTemplate.execute(UNLOCK_REDIS_SCRIPT, List.of(key), value);
     }
 }
