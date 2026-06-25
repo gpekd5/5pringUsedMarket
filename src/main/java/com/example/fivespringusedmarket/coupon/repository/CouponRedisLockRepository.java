@@ -31,10 +31,10 @@ public class CouponRedisLockRepository {
      * @return 획득 성공 시 true, 이미 Lock 이 존재하면 false
      */
     public Boolean lock(String key, String value) {
-        // SET key value NX PX 3000 — 원자적으로 세팅, TTL 3초
+        // SET key value NX PX 10000 — 원자적으로 세팅, TTL 10초
         return stringRedisTemplate
                 .opsForValue()
-                .setIfAbsent(key, value, Duration.ofMillis(3_000));
+                .setIfAbsent(key, value, Duration.ofMillis(10_000));
     }
 
     /**
