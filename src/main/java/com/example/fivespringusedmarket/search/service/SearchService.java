@@ -24,8 +24,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Predicate;
 
 /**
  * 상품 검색 비즈니스 로직을 처리하는 Service입니다.
@@ -65,6 +67,8 @@ public class SearchService {
     public List<RecentSearchResponse> getRecentSearches(Long memberId) {
         return searchLogRepository.findByMemberIdOrderByCreatedAtDesc(memberId)
                 .stream()
+                .filter(distinctByKeyword())
+                .limit(10)
                 .map(RecentSearchResponse::from)
                 .toList();
     }
@@ -97,6 +101,12 @@ public class SearchService {
                 ))
                 .toList();
 
+    }
+
+    private Predicate<SearchLog> distinctByKeyword() {
+        Set<String> keywords = new HashSet<>();
+
+        return searchLog -> keywords.add(searchLog.getKeyword());
     }
 
     private Long toLongScore(Double score) {

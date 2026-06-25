@@ -7,6 +7,6 @@ import java.util.List;
 
 public interface SearchLogRepository extends JpaRepository<SearchLog, Long> {
 
-    List<SearchLog> findTop10ByMemberIdOrderByCreatedAtDesc(Long memberId);
+    List<SearchLog> findByMemberIdOrderByCreatedAtDesc(Long memberId);
 
 }
