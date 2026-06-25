@@ -20,6 +20,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -114,6 +115,30 @@ class AdminChatServiceTest {
                 "/sub/chat/rooms/10",
                 com.example.fivespringusedmarket.chat.dto.response.ChatMessageBroadcast.from(systemMessage)
         );
+    }
+
+    @Test
+    @DisplayName("CS 상태 변경 성공 - 고객 unreadCount 증가")
+    void changeCsStatus_success_incrementsCustomerUnreadCount() {
+        csRoom.changeCsStatus(CsStatus.IN_PROGRESS);
+
+        Member customer = Member.create("customer@test.com", "encoded", "고객");
+        ReflectionTestUtils.setField(customer, "id", 2L);
+        ChatMember customerMember = ChatMember.create(csRoom, customer, ChatMemberRole.MEMBER);
+        ChatMember adminMember = ChatMember.create(csRoom, admin, ChatMemberRole.ADMIN);
+
+        ChatMessage systemMessage = ChatMessage.createSystem(csRoom, "문의 상태가 COMPLETED으로 변경되었습니다.");
+        ReflectionTestUtils.setField(systemMessage, "id", 200L);
+
+        given(chatRoomCommonMethod.getChatRoomOrThrow(10L)).willReturn(csRoom);
+        given(chatMessageRepository.save(any())).willReturn(systemMessage);
+        given(chatMemberRepository.findByChatRoomIdWithMember(10L)).willReturn(List.of(customerMember, adminMember));
+
+        long beforeUnread = customerMember.getUnreadCount();
+        adminChatService.changeCsStatus(10L, CsStatus.COMPLETED);
+
+        assertThat(customerMember.getUnreadCount()).isEqualTo(beforeUnread + 1);
+        assertThat(adminMember.getUnreadCount()).isEqualTo(0L);
     }
 
     @Test
