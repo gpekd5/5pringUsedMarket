@@ -18,7 +18,6 @@ import com.example.fivespringusedmarket.auth.repository.RefreshTokenRedisReposit
 import com.example.fivespringusedmarket.common.security.JwtUtil;
 import com.example.fivespringusedmarket.member.entity.Member;
 import com.example.fivespringusedmarket.member.repository.MemberRepository;
-import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -110,7 +109,12 @@ class AuthControllerTest {
         // given
         Member member = saveMember("reissue@test.com", "Password123!", "재발급회원");
         String oldRefreshToken = jwtUtil.createRefreshToken(member);
-        when(refreshTokenRedisRepository.findByMemberId(member.getId())).thenReturn(Optional.of(oldRefreshToken));
+        when(refreshTokenRedisRepository.rotateIfMatches(
+                eq(member.getId()),
+                eq(oldRefreshToken),
+                anyString(),
+                eq(REFRESH_TOKEN_EXPIRATION)
+        )).thenReturn(true);
         Thread.sleep(5);
 
         String requestBody = """
@@ -133,8 +137,9 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.data.tokenType").value("Bearer"));
 
         ArgumentCaptor<String> newRefreshTokenCaptor = ArgumentCaptor.forClass(String.class);
-        verify(refreshTokenRedisRepository).save(
+        verify(refreshTokenRedisRepository).rotateIfMatches(
                 eq(member.getId()),
+                eq(oldRefreshToken),
                 newRefreshTokenCaptor.capture(),
                 eq(REFRESH_TOKEN_EXPIRATION)
         );
@@ -146,13 +151,47 @@ class AuthControllerTest {
         // given
         Member member = saveMember("mismatch@test.com", "Password123!", "불일치회원");
         String requestedRefreshToken = jwtUtil.createRefreshToken(member);
-        when(refreshTokenRedisRepository.findByMemberId(member.getId())).thenReturn(Optional.of("different-token"));
+        when(refreshTokenRedisRepository.rotateIfMatches(
+                eq(member.getId()),
+                eq(requestedRefreshToken),
+                anyString(),
+                eq(REFRESH_TOKEN_EXPIRATION)
+        )).thenReturn(false);
 
         String requestBody = """
                 {
                   "refreshToken": "%s"
                 }
                 """.formatted(requestedRefreshToken);
+
+        // when
+        ResultActions resultActions = mockMvc.perform(post("/api/auth/reissue")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody));
+
+        // then
+        resultActions.andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("INVALID_REFRESH_TOKEN"));
+    }
+
+    @Test
+    void reissueFailsWhenOldRefreshTokenIsReusedAfterRotation() throws Exception {
+        // given
+        Member member = saveMember("reuse@test.com", "Password123!", "재사용회원");
+        String oldRefreshToken = jwtUtil.createRefreshToken(member);
+        when(refreshTokenRedisRepository.rotateIfMatches(
+                eq(member.getId()),
+                eq(oldRefreshToken),
+                anyString(),
+                eq(REFRESH_TOKEN_EXPIRATION)
+        )).thenReturn(false);
+
+        String requestBody = """
+                {
+                  "refreshToken": "%s"
+                }
+                """.formatted(oldRefreshToken);
 
         // when
         ResultActions resultActions = mockMvc.perform(post("/api/auth/reissue")

@@ -76,19 +76,21 @@ public class AuthService {
         String requestedRefreshToken = request.refreshToken();
         Long memberId = jwtUtil.extractMemberIdFromRefreshToken(requestedRefreshToken);
 
-        String savedRefreshToken = refreshTokenRedisRepository.findByMemberId(memberId)
-                .orElseThrow(() -> new CustomException(ErrorCode.INVALID_REFRESH_TOKEN));
-
-        if (!savedRefreshToken.equals(requestedRefreshToken)) {
-            throw new CustomException(ErrorCode.INVALID_REFRESH_TOKEN);
-        }
-
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
 
         String newAccessToken = jwtUtil.createAccessToken(member);
         String newRefreshToken = jwtUtil.createRefreshToken(member);
-        refreshTokenRedisRepository.save(member.getId(), newRefreshToken, jwtUtil.getRefreshTokenExpiration());
+
+        boolean rotated = refreshTokenRedisRepository.rotateIfMatches(
+                member.getId(),
+                requestedRefreshToken,
+                newRefreshToken,
+                jwtUtil.getRefreshTokenExpiration()
+        );
+        if (!rotated) {
+            throw new CustomException(ErrorCode.INVALID_REFRESH_TOKEN);
+        }
 
         return TokenResponse.from(newAccessToken, newRefreshToken);
     }
