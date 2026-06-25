@@ -128,13 +128,22 @@ public class JwtUtil {
     }
 
     public AuthMember extractAuthMember(String token) {
-        Claims claims = parseClaims(token);
+        Claims claims = parseAccessTokenClaims(token);
+        validateTokenType(claims, ACCESS_TOKEN_TYPE, ErrorCode.INVALID_TOKEN);
 
         Long memberId = claims.get(MEMBER_ID_CLAIM, Long.class);
         String email = claims.get(EMAIL_CLAIM, String.class);
-        MemberRole role = MemberRole.valueOf(claims.get(ROLE_CLAIM, String.class));
+        String roleName = claims.get(ROLE_CLAIM, String.class);
 
-        return new AuthMember(memberId, email, role);
+        if (memberId == null || !StringUtils.hasText(email) || !StringUtils.hasText(roleName)) {
+            throw new CustomException(ErrorCode.INVALID_TOKEN);
+        }
+
+        try {
+            return new AuthMember(memberId, email, MemberRole.valueOf(roleName));
+        } catch (IllegalArgumentException exception) {
+            throw new CustomException(ErrorCode.INVALID_TOKEN);
+        }
     }
 
     private Claims parseClaims(String token) {
