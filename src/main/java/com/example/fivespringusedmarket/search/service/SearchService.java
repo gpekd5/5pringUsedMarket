@@ -19,6 +19,7 @@ import org.jspecify.annotations.NonNull;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,7 +43,7 @@ public class SearchService {
 
     private final ProductSearchRepository productSearchRepository;
     private final SearchLogRepository searchLogRepository;
-    private final RedisTemplate<Object, Object> redisTemplate;
+    private final StringRedisTemplate stringRedisTemplate;
     private static final String RANKING_POST_KEY = "popular:keywords";
     private static final int POPULAR_SEARCH_LIMIT = 10;
 
@@ -87,8 +88,8 @@ public class SearchService {
     }
 
     public List<PopularSearchResponse> getPopularSearches() {
-        Set<ZSetOperations.TypedTuple<Object>> popularKeywords =
-                redisTemplate.opsForZSet().reverseRangeWithScores(RANKING_POST_KEY, 0, POPULAR_SEARCH_LIMIT-1);
+        Set<ZSetOperations.TypedTuple<String>> popularKeywords =
+                stringRedisTemplate.opsForZSet().reverseRangeWithScores(RANKING_POST_KEY, 0, POPULAR_SEARCH_LIMIT-1);
 
         if (popularKeywords == null || popularKeywords.isEmpty()) {
             return List.of();
@@ -122,7 +123,7 @@ public class SearchService {
 
         searchLogRepository.save(SearchLog.create(member, trimmedKeyword)); // 앞뒤 공백 제거하기 위해 트림 사용
 
-        redisTemplate.opsForZSet().incrementScore(RANKING_POST_KEY, trimmedKeyword, 1);
+        stringRedisTemplate.opsForZSet().incrementScore(RANKING_POST_KEY, trimmedKeyword, 1);
     }
 
     private ProductCategory parseCategory(String category) {
