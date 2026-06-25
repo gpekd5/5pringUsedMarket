@@ -42,10 +42,10 @@ public enum ErrorCode {
 
     // 쿠폰
     COUPON_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 쿠폰입니다."),
-    COUPON_EVENT_NOT_STARTED(HttpStatus.BAD_REQUEST, "아직 시작되지 않은 쿠폰 이벤트입니다."),
-    COUPON_EVENT_ENDED(HttpStatus.BAD_REQUEST, "종료된 쿠폰 이벤트입니다."),
+    COUPON_EVENT_NOT_STARTED(HttpStatus.UNPROCESSABLE_ENTITY, "아직 시작되지 않은 쿠폰 이벤트입니다."),
+    COUPON_EVENT_ENDED(HttpStatus.UNPROCESSABLE_ENTITY, "종료된 쿠폰 이벤트입니다."),
     COUPON_ALREADY_ISSUED(HttpStatus.CONFLICT, "이미 발급받은 쿠폰입니다."),
-    COUPON_OUT_OF_STOCK(HttpStatus.CONFLICT, "쿠폰 재고가 소진되었습니다."),
+    COUPON_OUT_OF_STOCK(HttpStatus.GONE, "쿠폰 재고가 소진되었습니다."),
     USER_COUPON_NOT_FOUND(HttpStatus.NOT_FOUND, "보유하지 않은 쿠폰입니다."),
     COUPON_ALREADY_USED(HttpStatus.CONFLICT, "이미 사용된 쿠폰입니다."),
     COUPON_EXPIRED(HttpStatus.BAD_REQUEST, "만료된 쿠폰입니다."),
