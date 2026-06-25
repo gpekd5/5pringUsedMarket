@@ -5,6 +5,7 @@ import com.example.fivespringusedmarket.common.exception.ErrorCode;
 import com.example.fivespringusedmarket.member.entity.Member;
 import com.example.fivespringusedmarket.member.repository.MemberRepository;
 import com.example.fivespringusedmarket.product.dto.ProductPageResponse;
+import com.example.fivespringusedmarket.search.dto.PopularSearchResponse;
 import com.example.fivespringusedmarket.search.dto.RecentSearchResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -52,6 +53,10 @@ public class SearchFacade {
 
     public void deleteRecentSearch(Long memberId, Long searchLogId) {
         searchService.deleteRecentSearch(memberId, searchLogId);
+    }
+
+    public List<PopularSearchResponse> getPopularSearches() {
+        return searchService.getPopularSearches();
     }
 
     private Member findMemberOrNull(Long memberId) {

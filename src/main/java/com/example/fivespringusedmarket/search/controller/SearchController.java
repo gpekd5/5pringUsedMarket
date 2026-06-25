@@ -4,6 +4,7 @@ import com.example.fivespringusedmarket.common.response.ApiResponse;
 import com.example.fivespringusedmarket.common.security.AuthMember;
 import com.example.fivespringusedmarket.product.dto.ProductPageResponse;
 import com.example.fivespringusedmarket.product.entity.ProductCategory;
+import com.example.fivespringusedmarket.search.dto.PopularSearchResponse;
 import com.example.fivespringusedmarket.search.dto.RecentSearchResponse;
 import com.example.fivespringusedmarket.search.service.SearchFacade;
 import com.example.fivespringusedmarket.search.service.SearchService;
@@ -57,6 +58,12 @@ public class SearchController {
     ) {
         searchFacade.deleteRecentSearch(authMember.memberId(), searchLogId);
         return ResponseEntity.ok(ApiResponse.success("기록이 삭제되었습니다.", null));
+    }
+
+    @GetMapping("/api/search/popular")
+    public ResponseEntity<ApiResponse<List<PopularSearchResponse>>> getPopularSearches() {
+        List<PopularSearchResponse> responses = searchFacade.getPopularSearches();
+        return ResponseEntity.ok(ApiResponse.success(responses));
     }
 
 

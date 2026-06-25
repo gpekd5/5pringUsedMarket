@@ -37,6 +37,10 @@ public enum ErrorCode {
     PRODUCT_SOLD_OUT(HttpStatus.BAD_REQUEST, "판매 완료되거나 삭제된 상품입니다."),
     INVALID_SEARCH_SORT_TYPE(HttpStatus.BAD_REQUEST, "유효하지 않은 정렬입니다."),
 
+    // Search
+    SEARCH_LOG_NOT_FOUND(HttpStatus.NOT_FOUND, "검색 기록을 찾을 수 없습니다."),
+    FORBIDDEN_SEARCH_LOG(HttpStatus.FORBIDDEN, "본인의 검색 기록만 삭제할 수 있습니다."),
+
 	INVALID_STATUS(HttpStatus.BAD_REQUEST, "유효하지 않은 상태 값입니다."),
 	INVALID_CS_STATUS_TRANSITION(HttpStatus.BAD_REQUEST, "허용되지 않는 상태 전이입니다.");
 

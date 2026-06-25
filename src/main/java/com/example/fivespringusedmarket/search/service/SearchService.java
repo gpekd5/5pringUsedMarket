@@ -7,6 +7,7 @@ import com.example.fivespringusedmarket.product.dto.ProductListItemResponse;
 import com.example.fivespringusedmarket.product.dto.ProductPageResponse;
 import com.example.fivespringusedmarket.product.entity.ProductCategory;
 import com.example.fivespringusedmarket.product.entity.ProductStatus;
+import com.example.fivespringusedmarket.search.dto.PopularSearchResponse;
 import com.example.fivespringusedmarket.search.dto.ProductSearchCondition;
 import com.example.fivespringusedmarket.search.dto.ProductSearchSortType;
 import com.example.fivespringusedmarket.search.dto.RecentSearchResponse;
@@ -14,13 +15,17 @@ import com.example.fivespringusedmarket.search.entity.SearchLog;
 import com.example.fivespringusedmarket.search.repository.ProductSearchRepository;
 import com.example.fivespringusedmarket.search.repository.SearchLogRepository;
 import lombok.RequiredArgsConstructor;
+import org.jspecify.annotations.NonNull;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * 상품 검색 비즈니스 로직을 처리하는 Service입니다.
@@ -35,6 +40,9 @@ public class SearchService {
 
     private final ProductSearchRepository productSearchRepository;
     private final SearchLogRepository searchLogRepository;
+    private final RedisTemplate<Object, Object> redisTemplate;
+    private static final String RANKING_POST_KEY = "popular:keywords";
+    private static final int POPULAR_SEARCH_LIMIT = 10;
 
     // 캐시가 적용되지 않은 QueryDsl 상품 검색 v1 기능
     @Transactional
@@ -55,7 +63,7 @@ public class SearchService {
     }
 
     public List<RecentSearchResponse> getRecentSearches(Long memberId) {
-        return searchLogRepository.findTop10ByMemberIdOrderByCreatedAtDesc(memberId)
+        return searchLogRepository.findByMemberIdOrderByCreatedAtDesc(memberId)
                 .stream()
                 .map(RecentSearchResponse::from)
                 .toList();
@@ -74,12 +82,37 @@ public class SearchService {
         searchLogRepository.delete(searchLog);
     }
 
+    public List<PopularSearchResponse> getPopularSearches() {
+        Set<ZSetOperations.TypedTuple<Object>> popularKeywords =
+                redisTemplate.opsForZSet().reverseRangeWithScores(RANKING_POST_KEY, 0, POPULAR_SEARCH_LIMIT-1);
+
+        if (popularKeywords == null || popularKeywords.isEmpty()) {
+            return List.of();
+        }
+
+        return popularKeywords.stream()
+                .map(tuple -> new PopularSearchResponse(
+                        String.valueOf(tuple.getValue()),
+                        toLongScore(tuple.getScore())
+                ))
+                .toList();
+
+    }
+
+    private Long toLongScore(Double score) {
+        return score == null ? 0L : score.longValue();
+    }
+
     private void saveSearchLog(Member member, String keyword) {
         if (member == null || !StringUtils.hasText(keyword)) {
             return;
         }
 
-        searchLogRepository.save(SearchLog.create(member, keyword.trim())); // 앞뒤 공백 제거하기 위해 트림 사용
+        String trimmedKeyword = keyword.trim();
+
+        searchLogRepository.save(SearchLog.create(member, trimmedKeyword)); // 앞뒤 공백 제거하기 위해 트림 사용
+
+        redisTemplate.opsForZSet().incrementScore(RANKING_POST_KEY, trimmedKeyword, 1);
     }
 
     private ProductCategory parseCategory(String category) {
