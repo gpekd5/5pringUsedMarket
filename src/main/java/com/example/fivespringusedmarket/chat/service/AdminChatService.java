@@ -73,6 +73,13 @@ public class AdminChatService {
                 ChatMessage.createSystem(room, "문의 상태가 " + newStatus.name() + "으로 변경되었습니다.")
         );
         room.updateLastMessage(systemMessage.getContent(), systemMessage.getCreatedAt());
+
+        // unreadCount 증가 — 상태 변경 알림을 오프라인 고객이 놓치지 않도록 한다
+        chatMemberRepository.findByChatRoomIdWithMember(roomId).stream()
+                .filter(cm -> cm.getMemberRole() == ChatMemberRole.MEMBER)
+                .findFirst()
+                .ifPresent(ChatMember::incrementUnreadCount);
+
         // STOMP 브로드캐스트
         messagingTemplate.convertAndSend(
                 "/sub/chat/rooms/" + roomId,
