@@ -14,6 +14,10 @@ import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+/**
+ * 선착순 이벤트 쿠폰 엔티티.
+ * 이벤트 기간과 수량을 관리하며, 발급 가능 여부 판단 로직을 포함한다.
+ */
 @Getter
 @Entity
 @Table(name = "coupons")
@@ -48,18 +52,22 @@ public class Coupon {
     private LocalDateTime createdAt;
 
     public boolean isEventNotStarted(LocalDateTime now) {
+        // 현재 시각이 이벤트 시작 전이면 발급 불가
         return now.isBefore(eventStartAt);
     }
 
     public boolean isEventEnded(LocalDateTime now) {
+        // 현재 시각이 이벤트 종료 후이면 발급 불가
         return now.isAfter(eventEndAt);
     }
 
     public boolean hasStock() {
+        // 발급된 수량이 총 수량 미만이어야 재고 있음
         return issuedQty < totalQty;
     }
 
     public void incrementIssuedQty() {
+        // Redis Lock 보호 하에 호출되므로 동시성 충돌 없이 안전하게 증가
         this.issuedQty++;
     }
 }

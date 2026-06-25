@@ -3,6 +3,9 @@ package com.example.fivespringusedmarket.coupon.dto;
 import com.example.fivespringusedmarket.coupon.entity.UserCoupon;
 import java.time.LocalDateTime;
 
+/**
+ * 내 쿠폰 목록 조회 응답 DTO.
+ */
 public record UserCouponResponse(
         Long userCouponId,
         Long couponId,

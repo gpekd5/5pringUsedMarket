@@ -22,6 +22,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * 쿠폰 관련 API 를 처리하는 컨트롤러.
+ * 이벤트 쿠폰 목록 조회, 선착순 발급, 내 쿠폰 조회, 쿠폰 사용을 담당한다.
+ */
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor
@@ -43,6 +47,7 @@ public class CouponController {
             @PathVariable Long couponId,
             @AuthenticationPrincipal AuthMember authMember
     ) {
+        // 동시성 제어를 위해 LockService 를 통해 발급
         IssueCouponResponse result = lockService.issueCouponWithLock(couponId, authMember.memberId());
         return ResponseEntity.ok(ApiResponse.success("쿠폰 발급에 성공했습니다.", result));
     }
@@ -53,6 +58,7 @@ public class CouponController {
             @PageableDefault(size = 20, sort = "issuedAt", direction = Sort.Direction.DESC) Pageable pageable,
             @AuthenticationPrincipal AuthMember authMember
     ) {
+        // used 파라미터로 사용/미사용 필터링 가능
         Page<UserCouponResponse> result = couponService.getMyCoupons(authMember.memberId(), used, pageable);
         return ResponseEntity.ok(ApiResponse.success("내 쿠폰 목록 조회에 성공했습니다.", result));
     }
