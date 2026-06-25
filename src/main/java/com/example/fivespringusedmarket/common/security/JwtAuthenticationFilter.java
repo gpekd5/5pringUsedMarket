@@ -1,12 +1,15 @@
 package com.example.fivespringusedmarket.common.security;
 
+import com.example.fivespringusedmarket.auth.repository.AccessTokenBlacklistRepository;
 import com.example.fivespringusedmarket.common.exception.CustomException;
+import com.example.fivespringusedmarket.common.exception.ErrorCode;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
+import java.util.Set;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -21,19 +24,34 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private static final String AUTHORIZATION_HEADER = "Authorization";
-    private static final String BEARER_PREFIX = "Bearer ";
     private static final String ROLE_PREFIX = "ROLE_";
+    private static final String POST_METHOD = "POST";
+    private static final Set<String> PUBLIC_AUTH_PATHS = Set.of(
+            "/api/auth/signup",
+            "/api/auth/login",
+            "/api/auth/reissue"
+    );
 
     private final JwtUtil jwtUtil;
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+    private final BearerTokenResolver bearerTokenResolver;
+    private final AccessTokenBlacklistRepository accessTokenBlacklistRepository;
 
     public JwtAuthenticationFilter(
             JwtUtil jwtUtil,
-            JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint
+            JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint,
+            BearerTokenResolver bearerTokenResolver,
+            AccessTokenBlacklistRepository accessTokenBlacklistRepository
     ) {
         this.jwtUtil = jwtUtil;
         this.jwtAuthenticationEntryPoint = jwtAuthenticationEntryPoint;
+        this.bearerTokenResolver = bearerTokenResolver;
+        this.accessTokenBlacklistRepository = accessTokenBlacklistRepository;
+    }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        return POST_METHOD.equals(request.getMethod()) && PUBLIC_AUTH_PATHS.contains(request.getRequestURI());
     }
 
     @Override
@@ -42,7 +60,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain
     ) throws ServletException, IOException {
-        String token = resolveToken(request);
+        String token = bearerTokenResolver.resolve(request);
 
         try {
             if (StringUtils.hasText(token)) {
@@ -61,10 +79,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     private void authenticate(String token) {
-        jwtUtil.isValidToken(token);
-        AuthMember authMember = jwtUtil.extractAuthMember(token);
+        jwtUtil.validateAccessToken(token);
 
-        // 추후 로그아웃 구현 시 이 위치에 Access Token Blacklist 검증을 추가한다.
+        if (accessTokenBlacklistRepository.exists(token)) {
+            throw new CustomException(ErrorCode.BLACKLIST_TOKEN);
+        }
+
+        AuthMember authMember = jwtUtil.extractAuthMember(token);
         UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                 authMember,
                 null,
@@ -72,16 +93,5 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         );
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
-    }
-
-    private String resolveToken(HttpServletRequest request) {
-        String bearerToken = request.getHeader(AUTHORIZATION_HEADER);
-
-        if (StringUtils.hasText(bearerToken) && bearerToken.startsWith(BEARER_PREFIX)) {
-            // Bearer prefix를 제거한 순수 JWT 문자열만 반환한다.
-            return bearerToken.substring(BEARER_PREFIX.length());
-        }
-
-        return null;
     }
 }

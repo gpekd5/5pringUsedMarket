@@ -11,6 +11,7 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.UUID;
 import javax.crypto.SecretKey;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -51,6 +52,7 @@ public class JwtUtil {
 
         // Controller에서 AuthMember를 만들 수 있도록 필요한 최소 Claim을 담는다.
         return Jwts.builder()
+                .id(UUID.randomUUID().toString())
                 .subject(String.valueOf(member.getId()))
                 .claim(MEMBER_ID_CLAIM, member.getId())
                 .claim(EMAIL_CLAIM, member.getEmail())
@@ -69,6 +71,7 @@ public class JwtUtil {
         Date expiration = new Date(now.getTime() + refreshTokenExpiration);
 
         return Jwts.builder()
+                .id(UUID.randomUUID().toString())
                 .subject(String.valueOf(member.getId()))
                 .claim(MEMBER_ID_CLAIM, member.getId())
                 .claim(TOKEN_TYPE_CLAIM, REFRESH_TOKEN_TYPE)
@@ -76,6 +79,41 @@ public class JwtUtil {
                 .expiration(expiration)
                 .signWith(getSigningKey())
                 .compact();
+    }
+
+    public long getRefreshTokenExpiration() {
+        return refreshTokenExpiration;
+    }
+
+    public Long extractMemberIdFromRefreshToken(String refreshToken) {
+        Claims claims = parseRefreshTokenClaims(refreshToken);
+        validateTokenType(claims, REFRESH_TOKEN_TYPE, ErrorCode.INVALID_REFRESH_TOKEN);
+
+        Long memberId = claims.get(MEMBER_ID_CLAIM, Long.class);
+        if (memberId == null) {
+            throw new CustomException(ErrorCode.INVALID_REFRESH_TOKEN);
+        }
+
+        return memberId;
+    }
+
+    public long getRemainingExpirationMillis(String accessToken) {
+        Claims claims = parseAccessTokenClaims(accessToken);
+        validateTokenType(claims, ACCESS_TOKEN_TYPE, ErrorCode.INVALID_TOKEN);
+
+        Date expiration = claims.getExpiration();
+        long remainingMillis = expiration.getTime() - System.currentTimeMillis();
+
+        if (remainingMillis <= 0) {
+            throw new CustomException(ErrorCode.EXPIRED_TOKEN);
+        }
+
+        return remainingMillis;
+    }
+
+    public void validateAccessToken(String accessToken) {
+        Claims claims = parseAccessTokenClaims(accessToken);
+        validateTokenType(claims, ACCESS_TOKEN_TYPE, ErrorCode.INVALID_TOKEN);
     }
 
     public boolean isValidToken(String token) {
@@ -90,13 +128,22 @@ public class JwtUtil {
     }
 
     public AuthMember extractAuthMember(String token) {
-        Claims claims = parseClaims(token);
+        Claims claims = parseAccessTokenClaims(token);
+        validateTokenType(claims, ACCESS_TOKEN_TYPE, ErrorCode.INVALID_TOKEN);
 
         Long memberId = claims.get(MEMBER_ID_CLAIM, Long.class);
         String email = claims.get(EMAIL_CLAIM, String.class);
-        MemberRole role = MemberRole.valueOf(claims.get(ROLE_CLAIM, String.class));
+        String roleName = claims.get(ROLE_CLAIM, String.class);
 
-        return new AuthMember(memberId, email, role);
+        if (memberId == null || !StringUtils.hasText(email) || !StringUtils.hasText(roleName)) {
+            throw new CustomException(ErrorCode.INVALID_TOKEN);
+        }
+
+        try {
+            return new AuthMember(memberId, email, MemberRole.valueOf(roleName));
+        } catch (IllegalArgumentException exception) {
+            throw new CustomException(ErrorCode.INVALID_TOKEN);
+        }
     }
 
     private Claims parseClaims(String token) {
@@ -107,6 +154,40 @@ public class JwtUtil {
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
+    }
+
+    private Claims parseRefreshTokenClaims(String refreshToken) {
+        try {
+            return parseClaims(refreshToken);
+        } catch (ExpiredJwtException exception) {
+            throw new CustomException(ErrorCode.EXPIRED_REFRESH_TOKEN);
+        } catch (JwtException | IllegalArgumentException exception) {
+            throw new CustomException(ErrorCode.INVALID_REFRESH_TOKEN);
+        } catch (CustomException exception) {
+            if (exception.getErrorCode() == ErrorCode.EXPIRED_TOKEN) {
+                throw new CustomException(ErrorCode.EXPIRED_REFRESH_TOKEN);
+            }
+
+            throw new CustomException(ErrorCode.INVALID_REFRESH_TOKEN);
+        }
+    }
+
+    private Claims parseAccessTokenClaims(String accessToken) {
+        try {
+            return parseClaims(accessToken);
+        } catch (ExpiredJwtException exception) {
+            throw new CustomException(ErrorCode.EXPIRED_TOKEN);
+        } catch (JwtException | IllegalArgumentException exception) {
+            throw new CustomException(ErrorCode.INVALID_TOKEN);
+        }
+    }
+
+    private void validateTokenType(Claims claims, String expectedTokenType, ErrorCode errorCode) {
+        String tokenType = claims.get(TOKEN_TYPE_CLAIM, String.class);
+
+        if (!expectedTokenType.equals(tokenType)) {
+            throw new CustomException(errorCode);
+        }
     }
 
     private SecretKey getSigningKey() {
