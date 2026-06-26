@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -38,6 +39,7 @@ public class ProductService {
     private final MemberRepository memberRepository;
 
     @Transactional
+    @CacheEvict(cacheNames = "productSearch", allEntries = true)
     public ProductResponse createProduct(Long memberId, CreateProductRequest request) {
         if (request.price() < 0) {
             throw new CustomException(ErrorCode.INVALID_PRICE);
@@ -57,6 +59,7 @@ public class ProductService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = "productSearch", allEntries = true)
     public ProductResponse updateProduct(Long memberId, Long productId, UpdateProductRequest request) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new CustomException(ErrorCode.PRODUCT_NOT_FOUND));
@@ -78,6 +81,7 @@ public class ProductService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = "productSearch", allEntries = true)
     public void deleteProduct(Long memberId, Long productId) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new CustomException(ErrorCode.PRODUCT_NOT_FOUND));
@@ -155,6 +159,7 @@ public class ProductService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = "productSearch", allEntries = true)
     public void updateProductStatus(Long memberId, Long productId, String status) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new CustomException(ErrorCode.PRODUCT_NOT_FOUND));
@@ -179,6 +184,7 @@ public class ProductService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = "productSearch", allEntries = true)
     public void cancelReservation(Long memberId, Long productId) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new CustomException(ErrorCode.PRODUCT_NOT_FOUND));
