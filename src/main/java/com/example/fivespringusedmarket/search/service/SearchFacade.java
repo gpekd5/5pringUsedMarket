@@ -47,6 +47,27 @@ public class SearchFacade {
         );
     }
 
+    /**
+     * 상품 검색 v2을 수행합니다.
+     *
+     * <p>로그인 사용자인 경우 Member를 조회하여 SearchService로 전달하고,
+     * 비로그인 사용자인 경우 null을 전달합니다.</p>
+     */
+    public ProductPageResponse searchProductsV2(Long memberId, String keyword, String category, String status, String sort, Pageable pageable)
+    {
+
+        Member member = findMemberOrNull(memberId);
+
+        return searchService.searchProductsV2(
+                member,
+                keyword,
+                category,
+                status,
+                sort,
+                pageable
+        );
+    }
+
     public List<RecentSearchResponse> getRecentSearches(Long memberId) {
         return searchService.getRecentSearches(memberId);
     }
