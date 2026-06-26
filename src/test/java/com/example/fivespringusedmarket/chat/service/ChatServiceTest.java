@@ -74,6 +74,7 @@ class ChatServiceTest {
         ReflectionTestUtils.setField(newRoom, "id", 10L);
 
         given(chatRoomCommonMethod.getProductOrThrow(100L)).willReturn(product);
+        given(chatRoomCommonMethod.getMemberOrThrow(1L)).willReturn(seller);
         given(chatRoomCommonMethod.getMemberOrThrow(2L)).willReturn(buyer);
         given(chatRoomRepository.findTradeChatRoom(2L, 1L, 100L)).willReturn(Optional.empty());
         given(chatRoomRepository.save(any())).willReturn(newRoom);
@@ -94,6 +95,7 @@ class ChatServiceTest {
         ReflectionTestUtils.setField(existingRoom, "id", 10L);
 
         given(chatRoomCommonMethod.getProductOrThrow(100L)).willReturn(product);
+        given(chatRoomCommonMethod.getMemberOrThrow(1L)).willReturn(seller);
         given(chatRoomCommonMethod.getMemberOrThrow(2L)).willReturn(buyer);
         given(chatRoomRepository.findTradeChatRoom(2L, 1L, 100L)).willReturn(Optional.of(existingRoom));
 
@@ -146,8 +148,8 @@ class ChatServiceTest {
     void findOrCreateTradeRoom_adminCannotChat_throwsException() {
         TradeChatRoomCreateRequest request = new TradeChatRoomCreateRequest(100L);
         given(chatRoomCommonMethod.getProductOrThrow(100L)).willReturn(product);
+        given(chatRoomCommonMethod.getMemberOrThrow(1L)).willReturn(seller);
         given(chatRoomCommonMethod.getMemberOrThrow(3L)).willReturn(admin);
-        given(chatRoomRepository.findTradeChatRoom(3L, 1L, 100L)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> chatService.findOrCreateTradeRoom(3L, request))
                 .isInstanceOf(CustomException.class)
