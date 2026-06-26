@@ -45,8 +45,19 @@ public enum ErrorCode {
     FORBIDDEN_SEARCH_LOG(HttpStatus.FORBIDDEN, "접근 권한이 없습니다."),
     INVALID_SEARCH_SORT_TYPE(HttpStatus.BAD_REQUEST, "유효하지 않은 정렬입니다."),
 
-    INVALID_STATUS(HttpStatus.BAD_REQUEST, "유효하지 않은 상태 값입니다."),
-    INVALID_STATUS_TRANSITION(HttpStatus.BAD_REQUEST, "허용되지 않는 상태 전이입니다.");
+  	INVALID_STATUS(HttpStatus.BAD_REQUEST, "유효하지 않은 상태 값입니다."),
+	  INVALID_STATUS_TRANSITION(HttpStatus.BAD_REQUEST, "허용되지 않는 상태 전이입니다."),
+
+    // 쿠폰
+    COUPON_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 쿠폰입니다."),
+    COUPON_EVENT_NOT_STARTED(HttpStatus.UNPROCESSABLE_ENTITY, "아직 시작되지 않은 쿠폰 이벤트입니다."),
+    COUPON_EVENT_ENDED(HttpStatus.UNPROCESSABLE_ENTITY, "종료된 쿠폰 이벤트입니다."),
+    COUPON_ALREADY_ISSUED(HttpStatus.CONFLICT, "이미 발급받은 쿠폰입니다."),
+    COUPON_OUT_OF_STOCK(HttpStatus.GONE, "쿠폰 재고가 소진되었습니다."),
+    USER_COUPON_NOT_FOUND(HttpStatus.NOT_FOUND, "보유하지 않은 쿠폰입니다."),
+    COUPON_ALREADY_USED(HttpStatus.CONFLICT, "이미 사용된 쿠폰입니다."),
+    COUPON_EXPIRED(HttpStatus.BAD_REQUEST, "만료된 쿠폰입니다."),
+    COUPON_LOCK_TIMEOUT(HttpStatus.CONFLICT, "현재 요청이 많습니다. 잠시 후 다시 시도해주세요.");
 
     private final HttpStatus httpStatus;
     private final String message;
