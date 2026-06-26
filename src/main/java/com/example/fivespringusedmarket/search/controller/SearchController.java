@@ -1,13 +1,13 @@
 package com.example.fivespringusedmarket.search.controller;
 
+import com.example.fivespringusedmarket.common.exception.CustomException;
+import com.example.fivespringusedmarket.common.exception.ErrorCode;
 import com.example.fivespringusedmarket.common.response.ApiResponse;
 import com.example.fivespringusedmarket.common.security.AuthMember;
 import com.example.fivespringusedmarket.product.dto.ProductPageResponse;
-import com.example.fivespringusedmarket.product.entity.ProductCategory;
 import com.example.fivespringusedmarket.search.dto.PopularSearchResponse;
 import com.example.fivespringusedmarket.search.dto.RecentSearchResponse;
 import com.example.fivespringusedmarket.search.service.SearchFacade;
-import com.example.fivespringusedmarket.search.service.SearchService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -25,6 +25,7 @@ import java.util.List;
 public class SearchController {
 
     private final SearchFacade searchFacade;
+    private static final int MAX_SEARCH_PAGE_SIZE = 50;
 
     /**
      * 캐시가 적용되지 않은 상품 검색 v1 API입니다.
@@ -41,6 +42,8 @@ public class SearchController {
             @RequestParam(required = false) String sort,
             @PageableDefault(size = 10) Pageable pageable
             ){
+        validateSearchPageSize(pageable);
+
         Long memberId = authMember == null ? null : authMember.memberId();
 
         ProductPageResponse response = searchFacade.searchProductsV1(memberId, keyword, category, status, sort, pageable);
@@ -62,6 +65,8 @@ public class SearchController {
             @RequestParam(required = false) String sort,
             @PageableDefault(size = 10) Pageable pageable
     ){
+        validateSearchPageSize(pageable);
+
         Long memberId = authMember == null ? null : authMember.memberId();
 
         ProductPageResponse response = searchFacade.searchProductsV2(memberId, keyword, category, status, sort, pageable);
@@ -107,6 +112,12 @@ public class SearchController {
     public ResponseEntity<ApiResponse<List<PopularSearchResponse>>> getPopularSearches() {
         List<PopularSearchResponse> responses = searchFacade.getPopularSearches();
         return ResponseEntity.ok(ApiResponse.success(responses));
+    }
+
+    private void validateSearchPageSize(Pageable pageable) {
+        if (pageable.getPageSize() > MAX_SEARCH_PAGE_SIZE) {
+            throw new CustomException(ErrorCode.INVALID_REQUEST);
+        }
     }
 
 
