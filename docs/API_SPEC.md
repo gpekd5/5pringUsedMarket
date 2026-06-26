@@ -341,6 +341,53 @@ COMPLETED
 
 ---
 
+# 2-A. 이미지 업로드 API
+
+## 2-A-1. 상품 이미지 업로드
+
+- Method: `POST`
+- Path: `/api/images`
+- Auth: 필요
+- Content-Type: `multipart/form-data`
+
+### Request
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| file | MultipartFile | Y | jpg/jpeg/png/webp 이미지 파일 |
+
+### Validation
+
+| 항목 | 규칙 |
+|---|---|
+| empty | 빈 파일 거부 |
+| MIME type | image/jpeg, image/png, image/webp 허용 |
+| extension | jpg, jpeg, png, webp 허용 |
+| size | `AWS_S3_MAX_FILE_SIZE` 이하 |
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "이미지 업로드에 성공했습니다.",
+  "data": {
+    "imageUrl": "https://bucket-name.s3.ap-northeast-2.amazonaws.com/products/uuid.png"
+  }
+}
+```
+
+### Error
+
+| Status | Code | 설명 |
+|---|---|---|
+| 400 | EMPTY_IMAGE_FILE | 빈 이미지 파일 |
+| 400 | INVALID_IMAGE_FILE | 지원하지 않는 MIME 타입 또는 확장자 |
+| 400 | IMAGE_FILE_SIZE_EXCEEDED | 이미지 파일 크기 제한 초과 |
+| 500 | IMAGE_UPLOAD_FAILED | S3 업로드 실패 |
+
+---
+
 # 2. 상품 API
 
 ## 2-1. 상품 등록
