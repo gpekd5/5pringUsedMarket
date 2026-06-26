@@ -365,6 +365,8 @@ COMPLETED
 | extension | jpg, jpeg, png, webp 허용 |
 | size | `AWS_S3_MAX_FILE_SIZE` 이하 |
 
+Spring multipart 파서 제한도 `AWS_S3_MAX_FILE_SIZE`와 같은 값으로 맞춘다.
+
 ### Response
 
 ```json
@@ -372,7 +374,7 @@ COMPLETED
   "success": true,
   "message": "이미지 업로드에 성공했습니다.",
   "data": {
-    "imageKey": "products/uuid.png"
+    "imageKey": "products/11111111-1111-1111-1111-111111111111.png"
   }
 }
 ```
@@ -381,6 +383,7 @@ COMPLETED
 
 - S3 Bucket은 Private 정책을 유지한다.
 - 업로드 성공 응답은 S3 Object URL이 아니라 `imageKey`만 반환한다.
+- 현재 서버가 생성하는 `imageKey` 형식은 `products/{uuid}.{jpg|jpeg|png|webp}`이다.
 - 상품 조회 응답의 이미지 URL은 서버가 생성한 10분 만료 Presigned URL을 사용한다.
 
 ### Error
@@ -406,7 +409,8 @@ COMPLETED
 
 - 상품 이미지는 `/api/images`로 먼저 업로드한다.
 - 업로드 응답의 `imageKey` 목록을 `imageKeys`로 전달한다.
-- 서버는 `imageKey`를 `product_images.image_key`에 저장한다.
+- 서버는 `products/{uuid}.{jpg|jpeg|png|webp}` 형식의 `imageKey`만 `product_images.image_key`에 저장한다.
+- `imageKeys` 항목이 `null`, blank, URL 문자열, `products/` 외 prefix, UUID 파일명 규칙이 아닌 값이면 거부한다.
 - 응답의 `imageUrls`는 저장된 `imageKey`를 10분 만료 Presigned URL로 변환한 값이다.
 
 ### Request
@@ -418,8 +422,8 @@ COMPLETED
   "description": "2023년 구매, 상태 매우 좋음",
   "category": "DIGITAL",
   "imageKeys": [
-    "products/product1.jpg",
-    "products/product2.jpg"
+    "products/11111111-1111-1111-1111-111111111111.jpg",
+    "products/22222222-2222-2222-2222-222222222222.webp"
   ]
 }
 ```
@@ -439,8 +443,8 @@ COMPLETED
     "category": "DIGITAL",
     "status": "ON_SALE",
     "imageUrls": [
-      "https://bucket-name.s3.ap-northeast-2.amazonaws.com/products/product1.jpg?X-Amz-Signature=...",
-      "https://bucket-name.s3.ap-northeast-2.amazonaws.com/products/product2.jpg?X-Amz-Signature=..."
+      "https://bucket-name.s3.ap-northeast-2.amazonaws.com/products/11111111-1111-1111-1111-111111111111.jpg?X-Amz-Signature=...",
+      "https://bucket-name.s3.ap-northeast-2.amazonaws.com/products/22222222-2222-2222-2222-222222222222.webp?X-Amz-Signature=..."
     ],
     "createdAt": "2026-06-22T10:00:00",
     "updatedAt": "2026-06-22T10:00:00"
@@ -454,6 +458,7 @@ COMPLETED
 |---|---|---|
 | 400 | INVALID_CATEGORY | 유효하지 않은 카테고리 |
 | 400 | INVALID_PRICE | 가격은 0 이상이어야 함 |
+| 400 | INVALID_IMAGE_KEY | 허용되지 않는 imageKey |
 | 401 | UNAUTHORIZED | 인증되지 않은 사용자 |
 
 ---
@@ -491,7 +496,7 @@ COMPLETED
         "price": 2500000,
         "category": "DIGITAL",
         "status": "ON_SALE",
-        "thumbnailUrl": "https://bucket-name.s3.ap-northeast-2.amazonaws.com/products/product1.jpg?X-Amz-Signature=...",
+        "thumbnailUrl": "https://bucket-name.s3.ap-northeast-2.amazonaws.com/products/11111111-1111-1111-1111-111111111111.jpg?X-Amz-Signature=...",
         "createdAt": "2026-06-22T10:00:00"
       }
     ],
@@ -532,8 +537,8 @@ COMPLETED
     "sellerId": 3,
     "sellerNickname": "판매자A",
     "imageUrls": [
-      "https://bucket-name.s3.ap-northeast-2.amazonaws.com/products/1.png?X-Amz-Signature=...",
-      "https://bucket-name.s3.ap-northeast-2.amazonaws.com/products/2.png?X-Amz-Signature=..."
+      "https://bucket-name.s3.ap-northeast-2.amazonaws.com/products/11111111-1111-1111-1111-111111111111.png?X-Amz-Signature=...",
+      "https://bucket-name.s3.ap-northeast-2.amazonaws.com/products/22222222-2222-2222-2222-222222222222.png?X-Amz-Signature=..."
     ],
     "wished": true,
     "createdAt": "2026-06-23T10:00:00",
@@ -565,7 +570,7 @@ COMPLETED
   "description": "가격 인하합니다",
   "category": "DIGITAL",
   "imageKeys": [
-    "products/new1.jpg"
+    "products/33333333-3333-3333-3333-333333333333.jpg"
   ]
 }
 ```
@@ -575,6 +580,7 @@ COMPLETED
 | Status | Code | 설명 |
 |---|---|---|
 | 400 | INVALID_CATEGORY | 유효하지 않은 카테고리 |
+| 400 | INVALID_IMAGE_KEY | 허용되지 않는 imageKey |
 | 400 | CANNOT_MODIFY_SOLD_PRODUCT | SOLD 상태 상품 수정 불가 |
 | 401 | UNAUTHORIZED | 인증되지 않은 사용자 |
 | 403 | FORBIDDEN | 본인 상품이 아님 |

@@ -1,9 +1,14 @@
 package com.example.fivespringusedmarket.product.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.example.fivespringusedmarket.common.exception.CustomException;
+import com.example.fivespringusedmarket.common.exception.ErrorCode;
 import com.example.fivespringusedmarket.image.service.S3PresignedUrlService;
 import com.example.fivespringusedmarket.member.entity.Member;
 import com.example.fivespringusedmarket.member.repository.MemberRepository;
@@ -69,14 +74,19 @@ class ProductServiceTest {
                 1000000,
                 "상태 좋습니다",
                 "DIGITAL",
-                List.of("products/a.png", "products/b.png")
+                List.of(
+                        "products/11111111-1111-1111-1111-111111111111.png",
+                        "products/22222222-2222-2222-2222-222222222222.webp"
+                )
         );
 
         when(memberRepository.findById(1L)).thenReturn(Optional.of(seller));
         when(productRepository.save(any(Product.class))).thenReturn(product);
         when(productImageRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
-        when(s3PresignedUrlService.createPresignedUrl("products/a.png")).thenReturn("https://presigned.test/a");
-        when(s3PresignedUrlService.createPresignedUrl("products/b.png")).thenReturn("https://presigned.test/b");
+        when(s3PresignedUrlService.createPresignedUrl("products/11111111-1111-1111-1111-111111111111.png"))
+                .thenReturn("https://presigned.test/a");
+        when(s3PresignedUrlService.createPresignedUrl("products/22222222-2222-2222-2222-222222222222.webp"))
+                .thenReturn("https://presigned.test/b");
 
         // when
         ProductResponse response = productService.createProduct(1L, request);
@@ -87,20 +97,94 @@ class ProductServiceTest {
 
         List<ProductImage> images = imagesCaptor.getValue();
         assertThat(images).extracting(ProductImage::getImageKey)
-                .containsExactly("products/a.png", "products/b.png");
+                .containsExactly(
+                        "products/11111111-1111-1111-1111-111111111111.png",
+                        "products/22222222-2222-2222-2222-222222222222.webp"
+                );
         assertThat(response.imageUrls())
                 .containsExactly("https://presigned.test/a", "https://presigned.test/b");
+    }
+
+    @Test
+    void createProductRejectsInvalidImageKey() {
+        // given
+        CreateProductRequest request = new CreateProductRequest(
+                "맥북",
+                1000000,
+                "상태 좋습니다",
+                "DIGITAL",
+                List.of("products/not-uuid.png")
+        );
+
+        // when & then
+        assertThatThrownBy(() -> productService.createProduct(1L, request))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVALID_IMAGE_KEY);
+
+        verify(productRepository, never()).save(any(Product.class));
+    }
+
+    @Test
+    void createProductRejectsImageKeyOutsideProductsPrefix() {
+        // given
+        CreateProductRequest request = new CreateProductRequest(
+                "맥북",
+                1000000,
+                "상태 좋습니다",
+                "DIGITAL",
+                List.of("profiles/11111111-1111-1111-1111-111111111111.png")
+        );
+
+        // when & then
+        assertThatThrownBy(() -> productService.createProduct(1L, request))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVALID_IMAGE_KEY);
+    }
+
+    @Test
+    void createProductRejectsUrlImageKey() {
+        // given
+        CreateProductRequest request = new CreateProductRequest(
+                "맥북",
+                1000000,
+                "상태 좋습니다",
+                "DIGITAL",
+                List.of("https://bucket.s3.ap-northeast-2.amazonaws.com/products/11111111-1111-1111-1111-111111111111.png")
+        );
+
+        // when & then
+        assertThatThrownBy(() -> productService.createProduct(1L, request))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVALID_IMAGE_KEY);
+    }
+
+    @Test
+    void getProductReturnsEmptyImageUrlsWhenProductHasNoImage() {
+        // given
+        Product product = createProduct(10L);
+
+        when(productRepository.findById(10L)).thenReturn(Optional.of(product));
+        when(productImageRepository.findByProductIdOrderBySortOrderAsc(10L)).thenReturn(List.of());
+
+        // when
+        ProductResponse response = productService.getProduct(10L);
+
+        // then
+        assertThat(response.imageUrls()).isEmpty();
     }
 
     @Test
     void getProductReturnsPresignedImageUrls() {
         // given
         Product product = createProduct(10L);
-        ProductImage image = ProductImage.create(product, "products/detail.png", 0);
+        ProductImage image = ProductImage.create(product, "products/33333333-3333-3333-3333-333333333333.png", 0);
 
         when(productRepository.findById(10L)).thenReturn(Optional.of(product));
         when(productImageRepository.findByProductIdOrderBySortOrderAsc(10L)).thenReturn(List.of(image));
-        when(s3PresignedUrlService.createPresignedUrl("products/detail.png"))
+        when(s3PresignedUrlService.createPresignedUrl("products/33333333-3333-3333-3333-333333333333.png"))
                 .thenReturn("https://presigned.test/detail");
 
         // when
@@ -114,14 +198,14 @@ class ProductServiceTest {
     void getProductsReturnsPresignedThumbnailUrl() {
         // given
         Product product = createProduct(10L);
-        ProductImage thumbnail = ProductImage.create(product, "products/thumb.png", 0);
+        ProductImage thumbnail = ProductImage.create(product, "products/44444444-4444-4444-4444-444444444444.png", 0);
         PageRequest pageable = PageRequest.of(0, 10);
 
         when(productRepository.searchProducts(null, null, ProductStatus.ON_SALE, null, ProductStatus.DELETED, pageable))
                 .thenReturn(new PageImpl<>(List.of(product), pageable, 1));
         when(productImageRepository.findByProductIdInAndSortOrder(List.of(10L), 0))
                 .thenReturn(List.of(thumbnail));
-        when(s3PresignedUrlService.createPresignedUrl("products/thumb.png"))
+        when(s3PresignedUrlService.createPresignedUrl("products/44444444-4444-4444-4444-444444444444.png"))
                 .thenReturn("https://presigned.test/thumb");
 
         // when

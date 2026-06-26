@@ -193,8 +193,15 @@ WHERE title LIKE CONCAT('%', :keyword, '%')
 - 하나의 상품은 여러 이미지를 가질 수 있다.
 - `sort_order = 0` 또는 가장 작은 값의 이미지를 대표 이미지로 사용한다.
 - `product_images`에는 Public URL을 저장하지 않고 `image_key`만 저장한다.
+- `image_key`는 서버가 업로드 응답으로 발급한 `products/{uuid}.{jpg|jpeg|png|webp}` 형식을 저장한다.
 - 상품 상세/목록 응답에서는 저장된 `image_key`를 그대로 노출하지 않고 10분 만료 Presigned URL로 변환한다.
 - 이미지 삭제/수정 시 상품 소유자 검증이 필요하다.
+
+### image_url -> image_key 전환 메모
+
+기존 운영 DB에 `product_images.image_url` 컬럼과 Public S3 URL 데이터가 있다면 배포 전에 `image_key` 컬럼을 추가하고 기존 URL의 path 부분을 key로 백필해야 한다.
+이 저장소는 현재 Flyway/Liquibase를 사용하지 않으므로 전환 SQL은 배포 절차에서 명시적으로 실행한다.
+참고 SQL은 `docs/db-migration/product-image-key-backfill.sql`에 둔다.
 
 ### 제약조건 추천
 
@@ -532,6 +539,7 @@ CREATE INDEX idx_chat_messages_member_id ON chat_messages(member_id);
 | 상품 상태 변경 | PATCH | `/api/products/{productId}/status` |
 
 상품 이미지는 `ImageUploadController`로 먼저 업로드한 뒤 반환받은 `imageKey` 목록을 상품 등록·수정 요청의 `imageKeys` 필드로 전달해 관리한다.
+상품 도메인은 `products/{uuid}.{jpg|jpeg|png|webp}` 형식의 key만 저장한다.
 
 ---
 

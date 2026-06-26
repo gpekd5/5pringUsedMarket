@@ -20,6 +20,7 @@ import com.example.fivespringusedmarket.product.repository.ProductRepository;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
@@ -34,6 +35,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class ProductService {
+
+    private static final Pattern PRODUCT_IMAGE_KEY_PATTERN =
+            Pattern.compile("^products/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\\.(jpg|jpeg|png|webp)$");
 
     private final ProductRepository productRepository;
     private final ProductImageRepository productImageRepository;
@@ -52,6 +56,8 @@ public class ProductService {
         if (request.price() < 0) {
             throw new CustomException(ErrorCode.INVALID_PRICE);
         }
+
+        validateImageKeys(request.imageKeys());
 
         ProductCategory category = parseCategory(request.category());
         Member seller = memberRepository.findById(memberId)
@@ -85,6 +91,7 @@ public class ProductService {
         }
 
         ProductCategory category = request.category() != null ? parseCategory(request.category()) : null;
+        validateImageKeys(request.imageKeys());
         product.update(request.title(), request.price(), request.description(), category);
 
         List<ProductImage> images = replaceImages(product, request.imageKeys());
@@ -283,6 +290,8 @@ public class ProductService {
             return new ArrayList<>();
         }
 
+        validateImageKeys(imageKeys);
+
         // 요청 배열 순서 기준으로 0부터 sortOrder를 부여한다.
         List<ProductImage> images = new ArrayList<>();
         for (int i = 0; i < imageKeys.size(); i++) {
@@ -290,6 +299,19 @@ public class ProductService {
         }
 
         return productImageRepository.saveAll(images);
+    }
+
+    private void validateImageKeys(List<String> imageKeys) {
+        if (imageKeys == null || imageKeys.isEmpty()) {
+            return;
+        }
+
+        for (String imageKey : imageKeys) {
+            if (imageKey == null || imageKey.isBlank() || imageKey.contains("://")
+                    || !PRODUCT_IMAGE_KEY_PATTERN.matcher(imageKey).matches()) {
+                throw new CustomException(ErrorCode.INVALID_IMAGE_KEY);
+            }
+        }
     }
 
     /**
