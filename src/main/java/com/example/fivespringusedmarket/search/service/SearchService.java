@@ -43,6 +43,7 @@ public class SearchService {
     private final ProductSearchRepository productSearchRepository;
     private final SearchLogRepository searchLogRepository;
     private final StringRedisTemplate stringRedisTemplate;
+    private final CachedProductSearchReader cachedProductSearchService;
     private static final String RANKING_POST_KEY = "popular:keywords";
     private static final int POPULAR_SEARCH_LIMIT = 10;
 
@@ -53,8 +54,7 @@ public class SearchService {
      * 로그인 사용자가 keyword로 검색한 경우에는 최근 검색어 DB 저장과 Redis 인기검색어 집계를 함께 수행합니다.</p>
      */
     @Transactional
-    public ProductPageResponse searchProductsV1(Member member,String keyword, String category, String status, String sort, Pageable pageable)
-    {
+    public ProductPageResponse searchProductsV1(Member member,String keyword, String category, String status, String sort, Pageable pageable) {
         String normalizedKeyword = normalizeKeyword(keyword);
 
         ProductSearchCondition condition = new ProductSearchCondition(
@@ -67,6 +67,32 @@ public class SearchService {
         saveSearchLog(member, normalizedKeyword);
 
         Page<ProductListItemResponse> products = productSearchRepository.search(condition, pageable);
+
+        return ProductPageResponse.of(products);
+    }
+
+    /**
+     * Caffeine 캐시가 적용된 상품 검색 v2 기능입니다.
+     *
+     * <p>검색 로그 저장과 인기검색어 집계는 매 요청마다 수행하고,
+     * 상품 목록 조회 결과만 캐시를 적용합니다.</p>
+     */
+    @Transactional
+    public ProductPageResponse searchProductsV2(Member member, String keyword, String category, String status, String sort, Pageable pageable) {
+        String normalizedKeyword = normalizeKeyword(keyword);
+
+        ProductSearchCondition condition = new ProductSearchCondition(
+                normalizedKeyword,
+                parseCategory(category),
+                parseStatus(status),
+                parseSort(sort)
+        );
+
+        // 검색 행위 기록은 캐시 여부와 상관없이 매번 저장합니다.
+        saveSearchLog(member, normalizedKeyword);
+
+        // 실제 상품 목록 조회만 캐시 적용 Service에 위임합니다.
+        Page<ProductListItemResponse> products = cachedProductSearchService.search(condition, pageable);
 
         return ProductPageResponse.of(products);
     }
