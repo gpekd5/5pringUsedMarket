@@ -24,7 +24,7 @@ public class SearchLog extends BaseEntity {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "member_id")
+    @JoinColumn(name = "member_id", nullable = false)
     private Member member;
 
     @Column(nullable = false, length = 100)
@@ -33,5 +33,9 @@ public class SearchLog extends BaseEntity {
     public SearchLog(Member member, String keyword) {
         this.member = member;
         this.keyword = keyword;
+    }
+
+    public static SearchLog create(Member member, String keyword) {
+        return new SearchLog(member, keyword);
     }
 }
