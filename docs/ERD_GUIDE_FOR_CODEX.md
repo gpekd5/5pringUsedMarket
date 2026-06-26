@@ -176,7 +176,7 @@ WHERE title LIKE CONCAT('%', :keyword, '%')
 
 ### 역할
 
-상품 이미지 URL과 정렬 순서를 저장한다.
+상품 이미지 S3 Object Key와 정렬 순서를 저장한다.
 
 ### 컬럼
 
@@ -184,7 +184,7 @@ WHERE title LIKE CONCAT('%', :keyword, '%')
 |---|---|---|
 | id | BIGINT | 상품 이미지 PK |
 | product_id | BIGINT | 상품 ID |
-| image_url | VARCHAR(500) | 이미지 URL |
+| image_key | VARCHAR(500) | Private S3 Object Key |
 | sort_order | INT | 이미지 표시 순서 |
 | created_at | DATETIME | 생성일 |
 
@@ -192,6 +192,8 @@ WHERE title LIKE CONCAT('%', :keyword, '%')
 
 - 하나의 상품은 여러 이미지를 가질 수 있다.
 - `sort_order = 0` 또는 가장 작은 값의 이미지를 대표 이미지로 사용한다.
+- `product_images`에는 Public URL을 저장하지 않고 `image_key`만 저장한다.
+- 상품 상세/목록 응답에서는 저장된 `image_key`를 그대로 노출하지 않고 10분 만료 Presigned URL로 변환한다.
 - 이미지 삭제/수정 시 상품 소유자 검증이 필요하다.
 
 ### 제약조건 추천
@@ -529,7 +531,7 @@ CREATE INDEX idx_chat_messages_member_id ON chat_messages(member_id);
 | 상품 삭제 | DELETE | `/api/products/{productId}` |
 | 상품 상태 변경 | PATCH | `/api/products/{productId}/status` |
 
-상품 이미지는 상품 등록·수정 요청의 `images` 필드에서 함께 관리한다.
+상품 이미지는 `ImageUploadController`로 먼저 업로드한 뒤 반환받은 `imageKey` 목록을 상품 등록·수정 요청의 `imageKeys` 필드로 전달해 관리한다.
 
 ---
 

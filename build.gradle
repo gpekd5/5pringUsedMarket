@@ -26,8 +26,8 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-webmvc'
     implementation 'org.springframework.boot:spring-boot-starter-websocket'
-    implementation platform('software.amazon.awssdk:bom:2.31.78')
-    implementation 'software.amazon.awssdk:s3'
+    implementation platform('io.awspring.cloud:spring-cloud-aws-dependencies:4.0.2')
+    implementation 'io.awspring.cloud:spring-cloud-aws-starter-s3'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
     compileOnly 'org.projectlombok:lombok'

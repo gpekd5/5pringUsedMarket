@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 
 import com.example.fivespringusedmarket.common.exception.CustomException;
 import com.example.fivespringusedmarket.common.exception.ErrorCode;
+import com.example.fivespringusedmarket.image.service.S3PresignedUrlService;
 import com.example.fivespringusedmarket.member.entity.Member;
 import com.example.fivespringusedmarket.member.repository.MemberRepository;
 import com.example.fivespringusedmarket.product.dto.ProductListItemResponse;
@@ -68,6 +69,9 @@ class SearchServiceTest {
     @MockitoBean
     private ZSetOperations<String, String> zSetOperations;
 
+    @MockitoBean
+    private S3PresignedUrlService s3PresignedUrlService;
+
     private Member seller;
 
     @BeforeEach
@@ -90,6 +94,10 @@ class SearchServiceTest {
         // 테스트에서는 실제 Redis에 연결하지 않고, Redis ZSet 동작을 Mock 처리한다.
         when(stringRedisTemplate.opsForZSet()).thenReturn(zSetOperations);
         when(zSetOperations.incrementScore(anyString(), anyString(), eq(1.0))).thenReturn(1.0);
+
+        // 테스트에서는 실제 S3 Presigner를 호출하지 않고, imageKey 변환 결과만 검증한다.
+        when(s3PresignedUrlService.createPresignedUrl(anyString()))
+                .thenAnswer(invocation -> "https://presigned.test/" + invocation.getArgument(0));
     }
 
     @Test
@@ -200,11 +208,11 @@ class SearchServiceTest {
         );
 
         // then
-        // 대표 이미지 sortOrder가 0인 이미지 URL이 응답된다.
+        // 대표 이미지 sortOrder가 0인 imageKey가 Presigned URL로 변환되어 응답된다.
         assertThat(response.content()).hasSize(1);
         assertThat(response.content().get(0).productId()).isEqualTo(product.getId());
         assertThat(response.content().get(0).thumbnailUrl())
-                .isEqualTo("https://image.test/" + product.getTitle() + ".png");
+                .isEqualTo("https://presigned.test/products/" + product.getTitle() + ".png");
     }
 
     @Test
@@ -421,7 +429,7 @@ class SearchServiceTest {
         productImageRepository.saveAndFlush(
                 ProductImage.create(
                         product,
-                        "https://image.test/" + title + ".png",
+                        "products/" + title + ".png",
                         0
                 )
         );

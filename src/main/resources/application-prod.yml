@@ -1,0 +1,19 @@
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+  cloud:
+    aws:
+      credentials:
+        access-key: ${AWS_ACCESS_KEY_ID}
+        secret-key: ${AWS_SECRET_ACCESS_KEY}
+      region:
+        static: ${AWS_REGION:ap-northeast-2}
+      s3:
+        bucket: ${AWS_S3_BUCKET}
+
+aws:
+  s3:
+    directory: ${AWS_S3_DIRECTORY:products}
+    max-file-size: ${AWS_S3_MAX_FILE_SIZE:5242880}

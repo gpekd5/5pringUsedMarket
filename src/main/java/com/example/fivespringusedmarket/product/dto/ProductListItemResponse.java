@@ -29,4 +29,17 @@ public record ProductListItemResponse(
                 product.getCreatedAt()
         );
     }
+
+    public ProductListItemResponse withThumbnailUrl(String thumbnailUrl) {
+        return new ProductListItemResponse(
+                productId,
+                sellerId,
+                title,
+                price,
+                category,
+                status,
+                thumbnailUrl,
+                createdAt
+        );
+    }
 }

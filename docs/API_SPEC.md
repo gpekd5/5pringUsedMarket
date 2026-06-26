@@ -372,10 +372,16 @@ COMPLETED
   "success": true,
   "message": "이미지 업로드에 성공했습니다.",
   "data": {
-    "imageUrl": "https://bucket-name.s3.ap-northeast-2.amazonaws.com/products/uuid.png"
+    "imageKey": "products/uuid.png"
   }
 }
 ```
+
+### 처리 정책
+
+- S3 Bucket은 Private 정책을 유지한다.
+- 업로드 성공 응답은 S3 Object URL이 아니라 `imageKey`만 반환한다.
+- 상품 조회 응답의 이미지 URL은 서버가 생성한 10분 만료 Presigned URL을 사용한다.
 
 ### Error
 
@@ -396,6 +402,13 @@ COMPLETED
 - Path: `/api/products`
 - Auth: 필요
 
+### 처리 정책
+
+- 상품 이미지는 `/api/images`로 먼저 업로드한다.
+- 업로드 응답의 `imageKey` 목록을 `imageKeys`로 전달한다.
+- 서버는 `imageKey`를 `product_images.image_key`에 저장한다.
+- 응답의 `imageUrls`는 저장된 `imageKey`를 10분 만료 Presigned URL로 변환한 값이다.
+
 ### Request
 
 ```json
@@ -404,9 +417,9 @@ COMPLETED
   "price": 2500000,
   "description": "2023년 구매, 상태 매우 좋음",
   "category": "DIGITAL",
-  "images": [
-    "https://cdn.example.com/images/product1.jpg",
-    "https://cdn.example.com/images/product2.jpg"
+  "imageKeys": [
+    "products/product1.jpg",
+    "products/product2.jpg"
   ]
 }
 ```
@@ -426,8 +439,8 @@ COMPLETED
     "category": "DIGITAL",
     "status": "ON_SALE",
     "imageUrls": [
-      "https://cdn.example.com/images/product1.jpg",
-      "https://cdn.example.com/images/product2.jpg"
+      "https://bucket-name.s3.ap-northeast-2.amazonaws.com/products/product1.jpg?X-Amz-Signature=...",
+      "https://bucket-name.s3.ap-northeast-2.amazonaws.com/products/product2.jpg?X-Amz-Signature=..."
     ],
     "createdAt": "2026-06-22T10:00:00",
     "updatedAt": "2026-06-22T10:00:00"
@@ -478,7 +491,7 @@ COMPLETED
         "price": 2500000,
         "category": "DIGITAL",
         "status": "ON_SALE",
-        "thumbnailUrl": "https://cdn.example.com/images/product1.jpg",
+        "thumbnailUrl": "https://bucket-name.s3.ap-northeast-2.amazonaws.com/products/product1.jpg?X-Amz-Signature=...",
         "createdAt": "2026-06-22T10:00:00"
       }
     ],
@@ -519,8 +532,8 @@ COMPLETED
     "sellerId": 3,
     "sellerNickname": "판매자A",
     "imageUrls": [
-      "https://image-url.com/1.png",
-      "https://image-url.com/2.png"
+      "https://bucket-name.s3.ap-northeast-2.amazonaws.com/products/1.png?X-Amz-Signature=...",
+      "https://bucket-name.s3.ap-northeast-2.amazonaws.com/products/2.png?X-Amz-Signature=..."
     ],
     "wished": true,
     "createdAt": "2026-06-23T10:00:00",
@@ -551,8 +564,8 @@ COMPLETED
   "price": 2300000,
   "description": "가격 인하합니다",
   "category": "DIGITAL",
-  "images": [
-    "https://cdn.example.com/images/new1.jpg"
+  "imageKeys": [
+    "products/new1.jpg"
   ]
 }
 ```
