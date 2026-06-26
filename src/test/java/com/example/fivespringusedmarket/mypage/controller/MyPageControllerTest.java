@@ -56,7 +56,7 @@ class MyPageControllerTest {
         Member member = memberRepository.saveAndFlush(
                 Member.create("mypage@test.com", "encoded-password", "마이페이지회원")
         );
-        Product onSaleProduct = productRepository.save(
+        productRepository.save(
                 Product.create(member, "판매중 상품", "설명", 10_000, ProductCategory.DIGITAL)
         );
         Product reservedProduct = Product.create(member, "예약 상품", "설명", 20_000, ProductCategory.BOOK);
