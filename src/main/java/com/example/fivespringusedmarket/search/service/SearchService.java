@@ -23,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -54,14 +55,16 @@ public class SearchService {
     @Transactional
     public ProductPageResponse searchProductsV1(Member member,String keyword, String category, String status, String sort, Pageable pageable)
     {
+        String normalizedKeyword = normalizeKeyword(keyword);
+
         ProductSearchCondition condition = new ProductSearchCondition(
-                keyword,
+                normalizedKeyword,
                 parseCategory(category),
                 parseStatus(status),
                 parseSort(sort)
         );
 
-        saveSearchLog(member, keyword);
+        saveSearchLog(member, normalizedKeyword);
 
         Page<ProductListItemResponse> products = productSearchRepository.search(condition, pageable);
 
@@ -75,7 +78,9 @@ public class SearchService {
      * 응답에서는 같은 keyword가 여러 번 존재하더라도 최신 검색 기록 기준으로 하나만 노출합니다.</p>
      */
     public List<RecentSearchResponse> getRecentSearches(Long memberId) {
-        return searchLogRepository.findByMemberIdOrderByCreatedAtDesc(memberId)
+        LocalDateTime oneMonthAgo = LocalDateTime.now().minusMonths(1);
+
+        return searchLogRepository.findByMemberIdAndCreatedAtAfterOrderByCreatedAtDesc(memberId, oneMonthAgo)
                 .stream()
                 .filter(distinctByKeyword())
                 .limit(10)
@@ -99,7 +104,10 @@ public class SearchService {
             throw new CustomException(ErrorCode.FORBIDDEN_SEARCH_LOG);
         }
 
-        searchLogRepository.delete(searchLog);
+        searchLogRepository.deleteByMemberIdAndKeyword(
+                memberId,
+                searchLog.getKeyword()
+        );
     }
 
     /**
@@ -156,12 +164,21 @@ public class SearchService {
             return;
         }
 
-        String trimmedKeyword = keyword.trim();
-
         // 최근 검색어 조회/삭제를 위한 DB 검색 기록 저장
-        searchLogRepository.save(SearchLog.create(member, trimmedKeyword)); // 앞뒤 공백 제거하기 위해 트림 사용
+        searchLogRepository.save(SearchLog.create(member, keyword)); // 앞뒤 공백 제거하기 위해 트림 사용
         // 인기검색어 Top 10 조회를 위한 Redis ZSet score 증가
-        stringRedisTemplate.opsForZSet().incrementScore(RANKING_POST_KEY, trimmedKeyword, 1);
+        stringRedisTemplate.opsForZSet().incrementScore(RANKING_POST_KEY, keyword, 1);
+    }
+
+    /**
+     * keyword를 Trim하여 변환합니다.
+     *
+     */
+    private String normalizeKeyword(String keyword) {
+        if (!StringUtils.hasText(keyword)) {
+            return null;
+        }
+        return keyword.trim();
     }
 
     /**
