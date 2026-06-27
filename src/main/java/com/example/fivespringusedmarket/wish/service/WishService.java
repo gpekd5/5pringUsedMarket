@@ -5,13 +5,12 @@ import com.example.fivespringusedmarket.common.exception.ErrorCode;
 import com.example.fivespringusedmarket.member.entity.Member;
 import com.example.fivespringusedmarket.product.entity.Product;
 import com.example.fivespringusedmarket.product.entity.ProductStatus;
-import com.example.fivespringusedmarket.wish.controller.WishController;
 import com.example.fivespringusedmarket.wish.dto.WishProductResponse;
-import com.example.fivespringusedmarket.wish.dto.WishStatusResponse;
 import com.example.fivespringusedmarket.wish.entity.Wish;
 import com.example.fivespringusedmarket.wish.repository.WishQueryRepository;
 import com.example.fivespringusedmarket.wish.repository.WishRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,8 +38,11 @@ public class WishService {
             throw new CustomException(ErrorCode.WISH_ALREADY_EXISTS);
         }
 
-        wishRepository.save(Wish.create(member, product));
-    }
+        try {
+            wishRepository.save(Wish.create(member, product));
+        } catch (DataIntegrityViolationException e) {
+            throw new CustomException(ErrorCode.WISH_ALREADY_EXISTS);
+        }    }
 
     /**
      * 관심상품을 삭제합니다.
