@@ -1,10 +1,6 @@
 spring:
   application:
     name: fivespring-used-market
-  servlet:
-    multipart:
-      max-file-size: ${AWS_S3_MAX_FILE_SIZE:5242880}
-      max-request-size: ${AWS_S3_MAX_FILE_SIZE:5242880}
 
 management:
   endpoints:

@@ -1,7 +1,19 @@
 spring:
   config:
+    import: aws-parameterstore:/used-market/prod/
     activate:
       on-profile: prod
+
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  servlet:
+    multipart:
+      max-file-size: ${AWS_S3_MAX_FILE_SIZE:5242880}
+      max-request-size: ${AWS_S3_MAX_FILE_SIZE:5242880}
 
   cloud:
     aws:
@@ -21,3 +33,8 @@ aws:
   s3:
     directory: ${AWS_S3_DIRECTORY:products}
     max-file-size: ${AWS_S3_MAX_FILE_SIZE:5242880}
+
+jwt:
+  secret: ${JWT_SECRET}
+  access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:1800000}
+  refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION:1209600000}
