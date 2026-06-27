@@ -9,6 +9,8 @@
 # JWT_SECRET=32자_이상의_충분히_긴_시크릿_문자열
 # JWT_ACCESS_TOKEN_EXPIRATION=1800000
 # JWT_REFRESH_TOKEN_EXPIRATION=1209600000
+# REDIS_HOST=localhost
+# REDIS_PORT=6379
 # AWS_REGION=ap-northeast-2
 # AWS_S3_BUCKET=your-s3-bucket-name
 # AWS_S3_DIRECTORY=products
@@ -26,6 +28,11 @@ spring:
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
 
   cloud:
     aws:
