@@ -9,11 +9,14 @@ AI 에이전트가 이 프로젝트에서 작업할 때 따라야 할 문서 확
 
 작업을 시작하기 전에 아래 순서로 확인한다.
 
-1. `README.md`
-2. `docs/PROJECT_CONTEXT.md`
-3. 작업 도메인에 해당하는 공식 문서
-4. 실제 코드
-5. 관련 Issue / Pull Request
+1. `docs/AGENT_RULES.md`
+2. `README.md`
+3. `docs/PROJECT_CONTEXT.md`
+4. 작업 도메인에 해당하는 공식 문서
+5. 실제 코드
+6. 관련 Issue / Pull Request
+
+사용자가 특정 확인 순서를 명시한 경우에는 그 순서를 우선한다.
 
 문서와 코드가 다르면 현재 동작은 코드 기준으로 판단하되, 최종 수정에서는 코드와 문서가 다시 일치하도록 함께 정리한다.
 
