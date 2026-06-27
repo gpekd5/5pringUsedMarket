@@ -75,6 +75,48 @@
   ],
   "item": [
     {
+      "name": "0. Health Check",
+      "item": [
+        {
+          "name": "0-1. Actuator Health",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actuator/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "actuator",
+                "health"
+              ]
+            },
+            "description": "배포 Health Check용 Actuator 엔드포인트입니다. 현재 설정은 health만 노출하고 상세 정보는 숨깁니다."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('Actuator health is UP', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(json).to.have.property('status', 'UP');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "1. Auth / Member",
       "item": [
         {
