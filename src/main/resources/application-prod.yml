@@ -10,6 +10,11 @@ spring:
       s3:
         bucket: ${AWS_S3_BUCKET}
 
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT:6379}
+
 aws:
   s3:
     directory: ${AWS_S3_DIRECTORY:products}

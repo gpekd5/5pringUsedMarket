@@ -95,7 +95,7 @@
                 "health"
               ]
             },
-            "description": "배포 Health Check용 Actuator 엔드포인트입니다. 현재 설정은 health만 노출하고 상세 정보는 숨깁니다."
+            "description": "배포 Health Check용 Actuator 엔드포인트입니다. health만 노출하며 Redis 컴포넌트 연결 상태를 함께 확인합니다."
           },
           "event": [
             {
@@ -107,6 +107,10 @@
                   "pm.test('Actuator health is UP', function () {",
                   "  pm.response.to.have.status(200);",
                   "  pm.expect(json).to.have.property('status', 'UP');",
+                  "});",
+                  "pm.test('Redis health is UP', function () {",
+                  "  pm.expect(json.components).to.have.property('redis');",
+                  "  pm.expect(json.components.redis).to.have.property('status', 'UP');",
                   "});"
                 ]
               }

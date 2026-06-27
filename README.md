@@ -21,6 +21,8 @@ DB_PASSWORD=12345678
 JWT_SECRET=your-local-jwt-secret-at-least-32-characters
 JWT_ACCESS_TOKEN_EXPIRATION=1800000
 JWT_REFRESH_TOKEN_EXPIRATION=1209600000
+REDIS_HOST=localhost
+REDIS_PORT=6379
 AWS_REGION=ap-northeast-2
 AWS_S3_BUCKET=your-s3-bucket-name
 AWS_S3_DIRECTORY=products
@@ -32,6 +34,10 @@ AWS_SECRET_ACCESS_KEY=your-aws-secret-access-key
 MySQL 컨테이너 내부 포트는 `3306`이지만 로컬 PC에는 `3307`로 노출합니다. 로컬에 이미 설치된 MySQL이 `3306`을 사용하는 경우가 많기 때문에 포트 충돌을 피하기 위한 구성입니다.
 
 Redis는 로컬 설치와 충돌 가능성이 비교적 낮고 Spring Boot 기본 Redis 포트도 `6379`이므로 `6379:6379`를 사용합니다.
+
+Spring Boot는 `REDIS_HOST`, `REDIS_PORT` 환경변수로 Redis에 연결합니다. 공통 설정의 기본값은 로컬 Docker Compose 기준인 `localhost:6379`입니다. `application-local.yml`은 이 공통 기본값을 그대로 사용하므로 Redis 설정을 중복 선언하지 않습니다.
+
+`prod` 프로필에서는 `REDIS_HOST` 기본값을 두지 않습니다. AWS 배포에서는 `REDIS_HOST`에 ElastiCache Redis endpoint를 반드시 주입해야 하며, 값을 누락하면 운영 서버가 실수로 `localhost` Redis에 붙는 문제를 방지하기 위해 기동 설정 오류로 드러나게 합니다. `REDIS_PORT`는 별도 지정이 없으면 `6379`를 사용합니다.
 
 ## S3 이미지 정책
 
@@ -95,3 +101,5 @@ GET /actuator/health
 Actuator는 배포 자동화와 인프라 Health Check가 애플리케이션의 기동 상태를 HTTP로 확인할 수 있도록 추가했습니다. 현재는 보안을 위해 `health` 엔드포인트만 노출하고 상세 정보는 숨깁니다.
 
 `/actuator/health`는 비즈니스 API와 달리 인증, 도메인 데이터, 외부 입력 형식에 의존하지 않는 표준 생존 확인 지점입니다. 따라서 EC2 배포 스크립트, Docker 헬스체크, GitHub Actions 배포 검증에서 서버가 정상적으로 떠 있는지 확인하는 용도로 사용합니다.
+
+Redis 연결 여부도 Health Check에서 확인할 수 있도록 컴포넌트 상태는 노출합니다. 정상 연결 시 응답의 `components.redis.status`가 `UP`으로 표시됩니다.

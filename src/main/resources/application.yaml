@@ -5,6 +5,10 @@ spring:
     multipart:
       max-file-size: ${AWS_S3_MAX_FILE_SIZE:5242880}
       max-request-size: ${AWS_S3_MAX_FILE_SIZE:5242880}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
 
 management:
   endpoints:
@@ -13,4 +17,5 @@ management:
         include: health
   endpoint:
     health:
+      show-components: always
       show-details: never
