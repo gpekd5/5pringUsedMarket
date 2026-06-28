@@ -216,6 +216,7 @@ CREATE INDEX idx_product_images_product_sort ON product_images(product_id, sort_
 | member_id | BIGINT | 회원 ID |
 | product_id | BIGINT | 상품 ID |
 | created_at | DATETIME | 생성일 |
+| updated_at | DATETIME | 수정일 |
 
 ### 비즈니스 규칙
 
