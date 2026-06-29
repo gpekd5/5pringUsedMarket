@@ -275,6 +275,20 @@ Chat Redis Pub/Sub
 
 ---
 
+# Private S3 이미지 접근
+
+S3 Bucket은 Private 정책을 유지하고, DB에는 Public URL이 아니라 S3 Object Key만 저장한다.
+상품 조회, 상품 목록, 검색 응답은 서버가 저장된 key를 10분 만료 Presigned URL로 변환해 반환한다.
+
+상품 등록/수정 요청의 `imageKeys`는 클라이언트 입력이므로 그대로 신뢰하지 않는다.
+현재 프로젝트 범위에서는 최소 방어선으로 `products/{uuid}.{jpg|jpeg|png|webp}` 형식만 허용하고, URL 문자열이나 다른 prefix의 key는 거부한다.
+추후 이미지 업로드 이력을 저장하게 되면 `memberId`, `imageKey`, 사용 여부를 검증해 업로드 소유권까지 확인한다.
+
+운영 환경의 AWS 자격 증명은 EC2 IAM Role 기반 기본 자격 증명 체인을 우선한다.
+`application-prod.yml`에는 장기 Access Key를 고정하지 않는다.
+
+---
+
 # 보안 원칙
 
 * 인증 관련 식별자는 Request Body를 신뢰하지 않는다.

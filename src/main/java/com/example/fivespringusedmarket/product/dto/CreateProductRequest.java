@@ -21,6 +21,6 @@ public record CreateProductRequest(
         @NotBlank
         String category,
 
-        List<String> images
+        List<String> imageKeys
 ) {
 }
