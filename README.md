@@ -106,6 +106,21 @@ implementation 'io.awspring.cloud:spring-cloud-aws-starter-parameter-store'
 
 현재 단계에서는 빠른 개발과 디버깅을 위해 Spring Boot 컨테이너를 Compose에 포함하지 않습니다. 이후 GitHub Actions나 EC2 배포 단계에서 애플리케이션 컨테이너가 필요해지면 별도 Compose 파일 또는 배포용 프로파일로 확장하는 구조가 적절합니다.
 
+## 배포 브랜치 전략
+
+운영 배포 기준 브랜치: `main`
+
+브랜치 흐름은 다음을 기준으로 합니다.
+
+```text
+feature/* → develop PR
+develop에서 통합 테스트
+운영 테스트 완료 후 develop → main PR
+main merge/push 시 운영 배포 실행
+```
+
+GitHub Actions는 `develop` 또는 `main` 대상 PR에서는 빌드/테스트만 수행합니다. AWS 인증, ECR Push, EC2 배포는 `main` 브랜치에 merge 또는 push되어 `push` 이벤트가 발생한 경우에만 실행합니다. 따라서 `develop` push만으로는 운영 배포가 실행되지 않습니다.
+
 ## 배포 헬스체크
 
 배포 후 EC2, Docker, GitHub Actions에서 서버 생존 여부를 확인할 때 아래 Actuator 엔드포인트를 사용합니다.
