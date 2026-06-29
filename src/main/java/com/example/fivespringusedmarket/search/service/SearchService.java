@@ -96,7 +96,10 @@ public class SearchService {
         saveSearchLog(member, normalizedKeyword);
 
         // 실제 상품 목록 조회만 캐시 적용 Service에 위임합니다.
-        return cachedProductSearchService.searchWithCaffeine(condition, pageable).map(this::withPresignedThumbnailUrl);
+        ProductPageResponse response =
+                cachedProductSearchService.searchWithCaffeine(condition, pageable);
+
+        return withPresignedThumbnailUrls(response);
     }
 
     /**
@@ -119,8 +122,10 @@ public class SearchService {
         // 검색 행위 기록은 캐시 여부와 상관없이 매번 저장합니다.
         saveSearchLog(member, normalizedKeyword);
 
-        // 실제 상품 목록 조회만 캐시 적용 Service에 위임합니다.
-        return cachedProductSearchService.searchWithRedis(condition, pageable);
+        ProductPageResponse response =
+                cachedProductSearchService.searchWithRedis(condition, pageable);
+
+        return withPresignedThumbnailUrls(response);
     }
 
     /**
@@ -270,6 +275,24 @@ public class SearchService {
         }catch (IllegalArgumentException e) {
             throw new CustomException(ErrorCode.INVALID_SEARCH_SORT_TYPE);
         }
+    }
+
+    /**
+     * 검색 목록 응답 안의 thumbnailUrl(imageKey)을 Presigned URL로 변환한다.
+     */
+    private ProductPageResponse withPresignedThumbnailUrls(ProductPageResponse response) {
+        List<ProductListItemResponse> convertedContent = response.content()
+                .stream()
+                .map(this::withPresignedThumbnailUrl)
+                .toList();
+
+        return new ProductPageResponse(
+                convertedContent,
+                response.page(),
+                response.size(),
+                response.totalElements(),
+                response.totalPages()
+        );
     }
 
     /**
