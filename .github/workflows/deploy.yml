@@ -123,7 +123,7 @@
             IMAGE_URI=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}
             
             # Dockerfile을 기준으로 Docker 이미지를 빌드한다.
-            docker build -t ${IMAGE_URI}:${IMAGE_TAG} .
+            docker build --platform linux/arm64 -t ${IMAGE_URI}:${IMAGE_TAG} .
             
             # 커밋 SHA 태그 이미지를 ECR에 Push한다.
             docker push ${IMAGE_URI}:${IMAGE_TAG}
