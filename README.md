@@ -108,18 +108,25 @@ implementation 'io.awspring.cloud:spring-cloud-aws-starter-parameter-store'
 
 ## 배포 브랜치 전략
 
+### 운영 배포 기준
+
 운영 배포 기준 브랜치: `main`
 
 브랜치 흐름은 다음을 기준으로 합니다.
 
 ```text
-feature/* → develop PR
-develop에서 통합 테스트
-운영 테스트 완료 후 develop → main PR
-main merge/push 시 운영 배포 실행
+feature/* → develop PR → 통합 테스트 → develop → main PR → main merge 시 운영 배포
 ```
 
-GitHub Actions는 `develop` 또는 `main` 대상 PR에서는 빌드/테스트만 수행합니다. AWS 인증, ECR Push, EC2 배포는 `main` 브랜치에 merge 또는 push되어 `push` 이벤트가 발생한 경우에만 실행합니다. 따라서 `develop` push만으로는 운영 배포가 실행되지 않습니다.
+`develop` 브랜치는 기능 통합 및 테스트 용도입니다. `main` 브랜치는 운영 배포 브랜치입니다. `develop`에 merge해도 운영 EC2 배포는 실행되지 않습니다.
+
+GitHub Actions는 다음 기준으로 동작합니다.
+
+* `develop` 대상 PR: build/test만 수행
+* `main` 대상 PR: build/test만 수행
+* `main` push/merge: build/test → Docker image build → ECR Push → EC2 Deploy → Health Check
+
+AWS OIDC 인증을 사용하는 경우 IAM Role Trust Policy의 branch 조건도 `refs/heads/main` 기준이어야 합니다. 기존 Trust Policy가 `repo:gpekd5/5pringUsedMarket:ref:refs/heads/develop` 기준이면 `repo:gpekd5/5pringUsedMarket:ref:refs/heads/main` 기준으로 변경해야 합니다. 이 설정이 맞지 않으면 `main` 배포 시 AWS 인증 단계에서 실패할 수 있습니다.
 
 ## 배포 헬스체크
 
