@@ -297,8 +297,23 @@ public class SearchService {
 
     /**
      * 검색 목록의 thumbnailUrl 자리에 들어 있던 imageKey를 Presigned URL로 바꾼다.
+     *
+     * <p>단, 더미 데이터처럼 이미 http/https URL 형태로 저장된 값은
+     * S3 Presigned URL 생성 대상이 아니므로 그대로 반환한다.</p>
      */
     private ProductListItemResponse withPresignedThumbnailUrl(ProductListItemResponse product) {
-        return product.withThumbnailUrl(s3PresignedUrlService.createPresignedUrl(product.thumbnailUrl()));
+        String thumbnailUrl = product.thumbnailUrl();
+
+        if (!StringUtils.hasText(thumbnailUrl)) {
+            return product;
+        }
+
+        if (thumbnailUrl.startsWith("http://") || thumbnailUrl.startsWith("https://")) {
+            return product.withThumbnailUrl(thumbnailUrl);
+        }
+
+        return product.withThumbnailUrl(
+                s3PresignedUrlService.createPresignedUrl(thumbnailUrl)
+        );
     }
 }
