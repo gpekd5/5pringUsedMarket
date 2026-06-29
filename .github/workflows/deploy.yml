@@ -1,234 +1,275 @@
-# GitHub Actions 워크플로우 이름
-# Actions 탭에서 이 이름으로 표시된다.
-name: CI/CD Deploy
+  # GitHub Actions 워크플로우 이름
+  # Actions 탭에서 이 이름으로 표시된다.
+  name: CI/CD Deploy
 
-# 워크플로우 실행 조건
-on:
-  # develop 브랜치를 대상으로 PR이 열리거나 업데이트되면 실행된다.
-  # 이때는 빌드/테스트만 수행하고, ECR Push와 EC2 배포는 하지 않는다.
-  pull_request:
-    branches: [ "develop" ]
+  # 워크플로우 실행 조건
+  on:
+    # develop 브랜치를 대상으로 PR이 열리거나 업데이트되면 실행된다.
+    # 이때는 빌드/테스트만 수행하고, ECR Push와 EC2 배포는 하지 않는다.
+    pull_request:
+      branches: [ "develop" ]
 
-  # develop 브랜치에 직접 push되거나 PR이 merge되면 실행된다.
-  # 이때는 빌드/테스트 후 Docker 이미지를 ECR에 Push하고 EC2에 배포한다.
-  push:
-    branches: [ "develop" ]
+    # develop 브랜치에 직접 push되거나 PR이 merge되면 실행된다.
+    # 이때는 빌드/테스트 후 Docker 이미지를 ECR에 Push하고 EC2에 배포한다.
+    push:
+      branches: [ "develop" ]
 
-  # GitHub Actions 화면에서 수동 실행할 수 있도록 허용한다.
-  workflow_dispatch:
+    # GitHub Actions 화면에서 수동 실행할 수 있도록 허용한다.
+    workflow_dispatch:
 
-# GitHub Actions가 사용할 권한
-permissions:
-  # OIDC 방식으로 AWS IAM Role을 Assume하기 위해 필요하다.
-  id-token: write
+  # 같은 브랜치에서 워크플로우가 중복 실행될 경우 이전 실행을 취소한다.
+  # develop에 연속 push/merge가 발생했을 때 이전 이미지가 뒤늦게 배포되는 상황을 방지한다.
+  concurrency:
+    group: deploy-${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
 
-  # Repository 코드를 checkout 하기 위해 필요하다.
-  contents: read
+  # GitHub Actions가 사용할 권한
+  permissions:
+    # OIDC 방식으로 AWS IAM Role을 Assume하기 위해 필요하다.
+    id-token: write
 
-# 워크플로우 전체에서 공통으로 사용할 환경변수
-# 현재 GitHub Repository Variables에 등록한 값을 사용한다.
-env:
-  AWS_REGION: ${{ vars.AWS_REGION }}
-  AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
-  ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
-  CONTAINER_NAME: used-market-app
-  LOG_GROUP: /used-market/prod/app
+    # Repository 코드를 checkout 하기 위해 필요하다.
+    contents: read
 
-jobs:
-  build:
-    # GitHub Actions 화면에 표시될 Job 이름
-    name: Build, Test, and Push Image
+  # 워크플로우 전체에서 공통으로 사용할 환경변수
+  # 현재 GitHub Repository Variables에 등록한 값을 사용한다.
+  env:
+    AWS_REGION: ${{ vars.AWS_REGION }}
+    AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+    ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+    CONTAINER_NAME: used-market-app
+    LOG_GROUP: /used-market/prod/app
 
-    # GitHub Actions가 제공하는 Ubuntu Runner에서 실행한다.
-    runs-on: ubuntu-latest
+  jobs:
+    build:
+      # GitHub Actions 화면에 표시될 Job 이름
+      name: Build, Test, and Push Image
 
-    # 테스트에서 Redis를 사용하므로 CI Runner에 Redis 컨테이너를 함께 실행한다.
-    # Member/MyPage 테스트에서 Redis 연결이 필요하다.
-    services:
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+      # GitHub Actions가 제공하는 Ubuntu Runner에서 실행한다.
+      runs-on: ubuntu-latest
 
-    # CI 테스트 실행에 필요한 환경변수
-    # 실제 운영 Secret이 아니라 GitHub Actions 테스트용 더미 값이다.
-    # 운영 배포는 아래 Configure AWS credentials 단계에서 OIDC Role로 인증한다.
-    env:
-      REDIS_HOST: localhost
-      REDIS_PORT: 6379
-      AWS_REGION: ap-northeast-2
-      AWS_ACCESS_KEY_ID: test
-      AWS_SECRET_ACCESS_KEY: test
-      AWS_EC2_METADATA_DISABLED: true
-      AWS_S3_BUCKET: test-bucket
-      AWS_S3_DIRECTORY: test
-      AWS_S3_MAX_FILE_SIZE: 10485760
-      JWT_SECRET: testtesttesttesttesttesttesttesttesttesttesttesttesttesttesttest
-      JWT_ACCESS_TOKEN_EXPIRATION: 1800000
-      JWT_REFRESH_TOKEN_EXPIRATION: 1209600000
+      # 테스트에서 Redis를 사용하므로 CI Runner에 Redis 컨테이너를 함께 실행한다.
+      # Member/MyPage 테스트에서 Redis 연결이 필요하다.
+      services:
+        redis:
+          image: redis:7-alpine
+          ports:
+            - 6379:6379
+          options: >-
+            --health-cmd "redis-cli ping"
+            --health-interval 10s
+            --health-timeout 5s
+            --health-retries 5
 
-    # deploy job에서 사용할 Docker 이미지 태그를 출력값으로 넘긴다.
-    outputs:
-      image_tag: ${{ steps.vars.outputs.short_sha }}
+      # CI 테스트 실행에 필요한 환경변수
+      # 실제 운영 Secret이 아니라 GitHub Actions 테스트용 더미 값이다.
+      # 운영 배포는 Configure AWS credentials 단계에서 OIDC Role로 인증한다.
+      env:
+        REDIS_HOST: localhost
+        REDIS_PORT: 6379
+        AWS_REGION: ap-northeast-2
+        AWS_ACCESS_KEY_ID: test
+        AWS_SECRET_ACCESS_KEY: test
+        AWS_EC2_METADATA_DISABLED: true
+        AWS_S3_BUCKET: test-bucket
+        AWS_S3_DIRECTORY: test
+        AWS_S3_MAX_FILE_SIZE: 10485760
+        JWT_SECRET: testtesttesttesttesttesttesttesttesttesttesttesttesttesttesttest
+        JWT_ACCESS_TOKEN_EXPIRATION: 1800000
+        JWT_REFRESH_TOKEN_EXPIRATION: 1209600000
 
-    steps:
-      # Step 1. GitHub Repository 코드 가져오기
-      # Runner는 빈 서버이므로 먼저 현재 Repository 코드를 내려받아야 한다.
-      - name: Checkout source code
-        uses: actions/checkout@v4
+      # deploy job에서 사용할 Docker 이미지 태그를 출력값으로 넘긴다.
+      outputs:
+        image_tag: ${{ steps.vars.outputs.short_sha }}
 
-      # Step 2. Git commit SHA 앞 7자리 추출
-      # Docker 이미지 태그로 사용해서 어떤 커밋이 배포됐는지 추적한다.
-      - name: Set short SHA
-        id: vars
-        run: echo "short_sha=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
+      steps:
+        # Step 1. GitHub Repository 코드 가져오기
+        # Runner는 빈 서버이므로 먼저 현재 Repository 코드를 내려받아야 한다.
+        - name: Checkout source code
+          uses: actions/checkout@v4
 
-      # Step 3. Java 17 설치
-      # 프로젝트 build.gradle의 Java toolchain 버전이 17이므로 Java 17을 사용한다.
-      - name: Set up Java 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'corretto'
+        # Step 2. Git commit SHA 앞 7자리 추출
+        # Docker 이미지 태그로 사용해서 어떤 커밋이 배포됐는지 추적한다.
+        - name: Set short SHA
+          id: vars
+          run: echo "short_sha=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
 
-      # Step 4. Gradle 캐시
-      # Gradle 의존성과 Wrapper를 캐싱하여 다음 실행부터 빌드 시간을 줄인다.
-      - name: Cache Gradle packages
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          # build.gradle 또는 gradle-wrapper.properties가 바뀌면 캐시 키도 바뀐다.
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
+        # Step 3. Java 17 설치
+        # 프로젝트 build.gradle의 Java toolchain 버전이 17이므로 Java 17을 사용한다.
+        - name: Set up Java 17
+          uses: actions/setup-java@v4
+          with:
+            java-version: '17'
+            distribution: 'corretto'
 
-      # Step 5. Gradle Wrapper 실행 권한 부여
-      # Linux Runner에서 ./gradlew 실행 시 권한 문제가 날 수 있어 실행 권한을 부여한다.
-      - name: Grant execute permission for Gradle
-        run: chmod +x ./gradlew
+        # Step 4. Gradle 캐시
+        # Gradle 의존성과 Wrapper를 캐싱하여 다음 실행부터 빌드 시간을 줄인다.
+        - name: Cache Gradle packages
+          uses: actions/cache@v4
+          with:
+            path: |
+              ~/.gradle/caches
+              ~/.gradle/wrapper
+            # build.gradle 또는 gradle-wrapper.properties가 바뀌면 캐시 키도 바뀐다.
+            key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+            restore-keys: |
+              ${{ runner.os }}-gradle-
 
-      # Step 6. 테스트 실행
-      # CI의 핵심 단계다. 테스트가 실패하면 이후 단계로 진행하지 않는다.
-      - name: Run tests
-        run: ./gradlew test
+        # Step 5. Gradle Wrapper 실행 권한 부여
+        # Linux Runner에서 ./gradlew 실행 시 권한 문제가 날 수 있어 실행 권한을 부여한다.
+        - name: Grant execute permission for Gradle
+          run: chmod +x ./gradlew
 
-      # Step 7. Spring Boot 실행 JAR 빌드
-      # Dockerfile이 build/libs/*.jar 파일을 이미지에 복사하므로 먼저 JAR를 생성한다.
-      - name: Build JAR
-        run: ./gradlew bootJar
+        # Step 6. 테스트 실행
+        # CI의 핵심 단계다. 테스트가 실패하면 이후 단계로 진행하지 않는다.
+        - name: Run tests
+          run: ./gradlew test
 
-      # Step 8. AWS 자격 증명 설정
-      # OIDC를 사용해 GitHub Actions가 AWS IAM Role을 임시로 Assume한다.
-      # PR에서는 실행하지 않고, develop push일 때만 실행한다.
-      - name: Configure AWS credentials
-        if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
-          aws-region: ${{ vars.AWS_REGION }}
+        # Step 7. Spring Boot 실행 JAR 빌드
+        # Dockerfile이 build/libs/*.jar 파일을 이미지에 복사하므로 먼저 JAR를 생성한다.
+        - name: Build JAR
+          run: ./gradlew bootJar
 
-      # Step 9. ECR 로그인
-      # Docker 이미지를 AWS ECR에 Push하기 위해 ECR 인증을 수행한다.
-      # PR에서는 실행하지 않고, develop push일 때만 실행한다.
-      - name: Login to Amazon ECR
-        if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
-        uses: aws-actions/amazon-ecr-login@v2
+        # Step 8. AWS 자격 증명 설정
+        # OIDC를 사용해 GitHub Actions가 AWS IAM Role을 임시로 Assume한다.
+        # PR에서는 실행하지 않고, develop push일 때만 실행한다.
+        - name: Configure AWS credentials
+          if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+          uses: aws-actions/configure-aws-credentials@v4
+          with:
+            role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+            aws-region: ${{ vars.AWS_REGION }}
 
-      # Step 10. Docker 이미지 빌드 및 ECR Push
-      # develop에 merge/push된 코드만 Docker 이미지로 빌드하고 ECR에 업로드한다.
-      - name: Build and push Docker image
-        if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
-        run: |
-          IMAGE_TAG=${{ steps.vars.outputs.short_sha }}
+        # Step 9. ECR 로그인
+        # Docker 이미지를 AWS ECR에 Push하기 위해 ECR 인증을 수행한다.
+        # PR에서는 실행하지 않고, develop push일 때만 실행한다.
+        - name: Login to Amazon ECR
+          if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+          uses: aws-actions/amazon-ecr-login@v2
 
-          # ECR 이미지 URI를 조합한다.
-          # 예: 123456789012.dkr.ecr.ap-northeast-2.amazonaws.com/used-market-app
-          IMAGE_URI=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}
+        # Step 10. Docker 이미지 빌드 및 ECR Push
+        # develop에 merge/push된 코드만 Docker 이미지로 빌드하고 ECR에 업로드한다.
+        - name: Build and push Docker image
+          if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+          run: |
+            IMAGE_TAG=${{ steps.vars.outputs.short_sha }}
+            
+            # ECR 이미지 URI를 조합한다.
+            # 예: 123456789012.dkr.ecr.ap-northeast-2.amazonaws.com/used-market-app
+            IMAGE_URI=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}
+            
+            # Dockerfile을 기준으로 Docker 이미지를 빌드한다.
+            # EC2가 aarch64/ARM64 환경이므로 linux/arm64 이미지로 빌드한다.
+            docker build --platform linux/arm64 -t ${IMAGE_URI}:${IMAGE_TAG} .
+            
+            # 커밋 SHA 태그 이미지를 ECR에 Push한다.
+            docker push ${IMAGE_URI}:${IMAGE_TAG}
+            
+            # 같은 이미지를 latest 태그로도 지정한다.
+            docker tag ${IMAGE_URI}:${IMAGE_TAG} ${IMAGE_URI}:latest
+            
+            # latest 태그도 ECR에 Push한다.
+            docker push ${IMAGE_URI}:latest
+            
+            # Actions 로그에서 Push 결과를 확인하기 위한 출력
+            echo "Pushed image: ${IMAGE_URI}:${IMAGE_TAG}"
+            echo "Pushed image: ${IMAGE_URI}:latest"
 
-          # Dockerfile을 기준으로 Docker 이미지를 빌드한다.
-          # EC2가 aarch64/ARM64 환경이므로 linux/arm64 이미지로 빌드한다.
-          docker build --platform linux/arm64 -t ${IMAGE_URI}:${IMAGE_TAG} .
+    deploy:
+      # GitHub Actions 화면에 표시될 Job 이름
+      name: Deploy to EC2
 
-          # 커밋 SHA 태그 이미지를 ECR에 Push한다.
-          docker push ${IMAGE_URI}:${IMAGE_TAG}
+      # build job이 성공한 뒤에만 deploy job을 실행한다.
+      needs: build
 
-          # 같은 이미지를 latest 태그로도 지정한다.
-          docker tag ${IMAGE_URI}:${IMAGE_TAG} ${IMAGE_URI}:latest
+      # develop push 또는 merge 때만 실제 운영 EC2에 배포한다.
+      # PR에서는 배포하지 않는다.
+      if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
 
-          # latest 태그도 ECR에 Push한다.
-          docker push ${IMAGE_URI}:latest
+      runs-on: ubuntu-latest
 
-          # Actions 로그에서 Push 결과를 확인하기 위한 출력
-          echo "Pushed image: ${IMAGE_URI}:${IMAGE_TAG}"
-          echo "Pushed image: ${IMAGE_URI}:latest"
-
-  deploy:
-    # GitHub Actions 화면에 표시될 Job 이름
-    name: Deploy to EC2
-
-    # build job이 성공한 뒤에만 deploy job을 실행한다.
-    needs: build
-
-    # develop push 또는 merge 때만 실제 운영 EC2에 배포한다.
-    # PR에서는 배포하지 않는다.
-    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
-
-    runs-on: ubuntu-latest
-
-    steps:
-      # Step 1. EC2에 SSH 접속하여 배포 명령 실행
-      # GitHub Secrets에 등록한 EC2_HOST, EC2_USERNAME, EC2_SSH_KEY를 사용한다.
-      - name: Deploy application container to EC2
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USERNAME }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            set -e
-
-            AWS_REGION=${{ vars.AWS_REGION }}
-            AWS_ACCOUNT_ID=${{ vars.AWS_ACCOUNT_ID }}
-            ECR_REPOSITORY=${{ vars.ECR_REPOSITORY }}
-            IMAGE_TAG=${{ needs.build.outputs.image_tag }}
-            CONTAINER_NAME=used-market-app
-            LOG_GROUP=/used-market/prod/app
-
-            IMAGE_URI=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:${IMAGE_TAG}
-
-            echo "Login to ECR"
-            aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
-
-            echo "Pull image: ${IMAGE_URI}"
-            docker pull ${IMAGE_URI}
-
-            echo "Stop and remove existing container"
-            docker rm -f ${CONTAINER_NAME} || true
-
-            echo "Run new container with CloudWatch Logs"
-            docker run -d \
-              --name ${CONTAINER_NAME} \
-              -p 8080:8080 \
-              -e SPRING_PROFILES_ACTIVE=prod \
-              -e AWS_REGION=${AWS_REGION} \
-              --log-driver=awslogs \
-              --log-opt awslogs-region=${AWS_REGION} \
-              --log-opt awslogs-group=${LOG_GROUP} \
-              --log-opt awslogs-stream=${CONTAINER_NAME} \
-              --restart unless-stopped \
-              ${IMAGE_URI}
-
-            echo "Wait for application startup"
-            sleep 40
-
-            echo "Health check"
-            curl -f http://localhost:8080/actuator/health
-
-            echo "Deployment completed successfully"
+      steps:
+        # Step 1. EC2에 SSH 접속하여 배포 명령 실행
+        # GitHub Secrets에 등록한 EC2_HOST, EC2_USERNAME, EC2_SSH_KEY를 사용한다.
+        - name: Deploy application container to EC2
+          uses: appleboy/ssh-action@v1.0.3
+          with:
+            host: ${{ secrets.EC2_HOST }}
+            username: ${{ secrets.EC2_USERNAME }}
+            key: ${{ secrets.EC2_SSH_KEY }}
+            script: |
+              set -e
+              
+              AWS_REGION=${{ vars.AWS_REGION }}
+              AWS_ACCOUNT_ID=${{ vars.AWS_ACCOUNT_ID }}
+              ECR_REPOSITORY=${{ vars.ECR_REPOSITORY }}
+              IMAGE_TAG=${{ needs.build.outputs.image_tag }}
+              CONTAINER_NAME=used-market-app
+              OLD_CONTAINER_NAME=${CONTAINER_NAME}-old
+              LOG_GROUP=/used-market/prod/app
+              
+              IMAGE_URI=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:${IMAGE_TAG}
+              
+              rollback() {
+                echo "Rollback started"
+              
+                echo "New container logs"
+                docker logs ${CONTAINER_NAME} || true
+              
+                echo "Remove failed new container"
+                docker rm -f ${CONTAINER_NAME} || true
+              
+                if docker ps -a --format '{{.Names}}' | grep -Fxq ${OLD_CONTAINER_NAME}; then
+                  echo "Restore previous container"
+                  docker rename ${OLD_CONTAINER_NAME} ${CONTAINER_NAME}
+                  docker start ${CONTAINER_NAME}
+                  echo "Rollback completed. Previous container restored."
+                else
+                  echo "Rollback failed. No previous container exists."
+                fi
+              
+                exit 1
+              }
+              
+              echo "Login to ECR"
+              aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+              
+              echo "Pull image: ${IMAGE_URI}"
+              docker pull ${IMAGE_URI}
+              
+              echo "Remove previous old container if exists"
+              docker rm -f ${OLD_CONTAINER_NAME} || true
+              
+              echo "Rename current container to old container if exists"
+              if docker ps -a --format '{{.Names}}' | grep -Fxq ${CONTAINER_NAME}; then
+                docker rename ${CONTAINER_NAME} ${OLD_CONTAINER_NAME}
+                docker stop ${OLD_CONTAINER_NAME}
+              fi
+              
+              echo "Run new container with CloudWatch Logs"
+              if ! docker run -d \
+                --name ${CONTAINER_NAME} \
+                -p 8080:8080 \
+                -e SPRING_PROFILES_ACTIVE=prod \
+                -e AWS_REGION=${AWS_REGION} \
+                --log-driver=awslogs \
+                --log-opt awslogs-region=${AWS_REGION} \
+                --log-opt awslogs-group=${LOG_GROUP} \
+                --log-opt awslogs-stream=${CONTAINER_NAME} \
+                --restart unless-stopped \
+                ${IMAGE_URI}; then
+                rollback
+              fi
+              
+              echo "Wait for application startup"
+              sleep 40
+              
+              echo "Health check"
+              if ! curl -f http://localhost:8080/actuator/health; then
+                rollback
+              fi
+              
+              echo "New container health check succeeded"
+              docker rm -f ${OLD_CONTAINER_NAME} || true
+              
+              echo "Deployment completed successfully"
