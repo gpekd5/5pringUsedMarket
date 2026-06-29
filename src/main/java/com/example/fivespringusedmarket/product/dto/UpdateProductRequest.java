@@ -18,6 +18,6 @@ public record UpdateProductRequest(
 
         String category,
 
-        List<String> images
+        List<String> imageKeys
 ) {
 }

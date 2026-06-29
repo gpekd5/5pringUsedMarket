@@ -176,7 +176,8 @@ WHERE title LIKE CONCAT('%', :keyword, '%')
 
 ### 역할
 
-상품 이미지 URL과 정렬 순서를 저장한다.
+상품 이미지 S3 Object Key와 정렬 순서를 저장한다.
+Private S3 Bucket 정책을 전제로 하므로 Public URL은 저장하지 않는다.
 
 ### 컬럼
 
@@ -184,15 +185,28 @@ WHERE title LIKE CONCAT('%', :keyword, '%')
 |---|---|---|
 | id | BIGINT | 상품 이미지 PK |
 | product_id | BIGINT | 상품 ID |
-| image_url | VARCHAR(500) | 이미지 URL |
+| image_key | VARCHAR(500) | Private S3 Object Key |
 | sort_order | INT | 이미지 표시 순서 |
 | created_at | DATETIME | 생성일 |
+| updated_at | DATETIME | 수정일 |
 
 ### 비즈니스 규칙
 
 - 하나의 상품은 여러 이미지를 가질 수 있다.
 - `sort_order = 0` 또는 가장 작은 값의 이미지를 대표 이미지로 사용한다.
+- `product_images`에는 Public URL, Presigned URL, CDN URL을 저장하지 않는다.
+- DB에는 S3 Object Key인 `image_key`만 저장한다.
+- `image_key`는 서버가 업로드 응답으로 발급한 `products/{uuid}.{jpg|jpeg|png|webp}` 형식을 저장한다.
+- 상품 상세/목록/검색 응답에서는 저장된 `image_key`를 그대로 노출하지 않고 10분 만료 Presigned URL로 변환한다.
+- Presigned URL은 조회 응답을 만들 때마다 생성되는 임시 접근 URL이므로 DB 정규 데이터로 취급하지 않는다.
 - 이미지 삭제/수정 시 상품 소유자 검증이 필요하다.
+
+### image_url -> image_key 전환 메모
+
+기존 운영 DB에 `product_images.image_url` 컬럼과 Public S3 URL 데이터가 있다면 배포 전에 `image_key` 컬럼을 추가하고 기존 URL의 path 부분을 key로 백필해야 한다.
+현재 코드 기준 엔티티 컬럼명은 `image_key`이며, `image_url` 컬럼은 사용하지 않는다.
+이 저장소는 현재 Flyway/Liquibase를 사용하지 않으므로 전환 SQL은 배포 절차에서 명시적으로 실행한다.
+참고 SQL은 `docs/db-migration/product-image-key-backfill.sql`에 둔다.
 
 ### 제약조건 추천
 
@@ -530,7 +544,8 @@ CREATE INDEX idx_chat_messages_member_id ON chat_messages(member_id);
 | 상품 삭제 | DELETE | `/api/products/{productId}` |
 | 상품 상태 변경 | PATCH | `/api/products/{productId}/status` |
 
-상품 이미지는 상품 등록·수정 요청의 `images` 필드에서 함께 관리한다.
+상품 이미지는 `ImageUploadController`로 먼저 업로드한 뒤 반환받은 `imageKey` 목록을 상품 등록·수정 요청의 `imageKeys` 필드로 전달해 관리한다.
+상품 도메인은 `products/{uuid}.{jpg|jpeg|png|webp}` 형식의 key만 저장하고, 상세/목록/검색 응답에서는 해당 key를 Presigned URL로 변환해 `imageUrls` 또는 `thumbnailUrl`로 반환한다.
 
 ---
 

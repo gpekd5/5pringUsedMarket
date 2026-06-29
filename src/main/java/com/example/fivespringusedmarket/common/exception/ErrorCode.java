@@ -40,6 +40,13 @@ public enum ErrorCode {
     PRODUCT_OWNER_CANNOT_CHAT(HttpStatus.BAD_REQUEST, "본인 상품에는 채팅을 시작할 수 없습니다."),
     PRODUCT_SOLD_OUT(HttpStatus.BAD_REQUEST, "판매 완료되거나 삭제된 상품입니다."),
 
+    // Image
+    EMPTY_IMAGE_FILE(HttpStatus.BAD_REQUEST, "이미지 파일이 비어 있습니다."),
+    INVALID_IMAGE_FILE(HttpStatus.BAD_REQUEST, "유효하지 않은 이미지 파일입니다."),
+    INVALID_IMAGE_KEY(HttpStatus.BAD_REQUEST, "유효하지 않은 이미지 key입니다."),
+    IMAGE_FILE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "이미지 파일 크기 제한을 초과했습니다."),
+    IMAGE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "이미지 업로드에 실패했습니다."),
+
     // Search
     SEARCH_LOG_NOT_FOUND(HttpStatus.NOT_FOUND, "해당 검색어를 찾을 수 없습니다."),
     FORBIDDEN_SEARCH_LOG(HttpStatus.FORBIDDEN, "접근 권한이 없습니다."),

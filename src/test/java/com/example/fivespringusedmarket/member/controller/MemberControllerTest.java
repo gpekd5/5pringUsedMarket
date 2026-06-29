@@ -3,6 +3,7 @@ package com.example.fivespringusedmarket.member.controller;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -23,6 +24,7 @@ import org.springframework.test.web.servlet.ResultActions;
         "spring.datasource.url=jdbc:h2:mem:member-controller-test",
         "spring.datasource.driver-class-name=org.h2.Driver",
         "spring.jpa.hibernate.ddl-auto=create-drop",
+        "management.health.redis.enabled=false",
         "jwt.secret=12345678901234567890123456789012",
         "jwt.access-token-expiration=1800000",
         "jwt.refresh-token-expiration=1209600000"
@@ -65,6 +67,49 @@ class MemberControllerTest {
                 .andExpect(jsonPath("$.data.memberId").value(member.getId()))
                 .andExpect(jsonPath("$.data.email").value("member@test.com"))
                 .andExpect(jsonPath("$.data.nickname").value("일반회원"));
+    }
+
+    @Test
+    void actuatorHealthIsAccessibleWithoutAuthentication() throws Exception {
+        // when
+        ResultActions resultActions = mockMvc.perform(get("/actuator/health"));
+
+        // then
+        resultActions.andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("UP"))
+                .andExpect(jsonPath("$.success").doesNotExist());
+    }
+
+    @Test
+    void actuatorHealthIgnoresAuthorizationHeader() throws Exception {
+        // when
+        ResultActions resultActions = mockMvc.perform(get("/actuator/health")
+                .header("Authorization", BEARER_PREFIX + "expired-token"));
+
+        // then
+        resultActions.andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("UP"))
+                .andExpect(jsonPath("$.success").doesNotExist());
+    }
+
+    @Test
+    void actuatorHealthDoesNotValidateTokenForUnsupportedMethod() throws Exception {
+        // when
+        ResultActions resultActions = mockMvc.perform(post("/actuator/health")
+                .header("Authorization", BEARER_PREFIX + "expired-token"));
+
+        // then
+        resultActions.andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
+    }
+
+    @Test
+    void getMyInfoRequiresAuthentication() throws Exception {
+        // when
+        ResultActions resultActions = mockMvc.perform(get("/api/members/me"));
+
+        // then
+        resultActions.andExpect(status().isUnauthorized());
     }
 
     @Test
