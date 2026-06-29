@@ -106,6 +106,28 @@ implementation 'io.awspring.cloud:spring-cloud-aws-starter-parameter-store'
 
 현재 단계에서는 빠른 개발과 디버깅을 위해 Spring Boot 컨테이너를 Compose에 포함하지 않습니다. 이후 GitHub Actions나 EC2 배포 단계에서 애플리케이션 컨테이너가 필요해지면 별도 Compose 파일 또는 배포용 프로파일로 확장하는 구조가 적절합니다.
 
+## 배포 브랜치 전략
+
+### 운영 배포 기준
+
+운영 배포 기준 브랜치: `main`
+
+브랜치 흐름은 다음을 기준으로 합니다.
+
+```text
+feature/* → develop PR → 통합 테스트 → develop → main PR → main merge 시 운영 배포
+```
+
+`develop` 브랜치는 기능 통합 및 테스트 용도입니다. `main` 브랜치는 운영 배포 브랜치입니다. `develop`에 merge해도 운영 EC2 배포는 실행되지 않습니다.
+
+GitHub Actions는 다음 기준으로 동작합니다.
+
+* `develop` 대상 PR: build/test만 수행
+* `main` 대상 PR: build/test만 수행
+* `main` push/merge: build/test → Docker image build → ECR Push → EC2 Deploy → Health Check
+
+AWS OIDC 인증을 사용하는 경우 IAM Role Trust Policy의 branch 조건도 `refs/heads/main` 기준이어야 합니다. 기존 Trust Policy가 `repo:gpekd5/5pringUsedMarket:ref:refs/heads/develop` 기준이면 `repo:gpekd5/5pringUsedMarket:ref:refs/heads/main` 기준으로 변경해야 합니다. 이 설정이 맞지 않으면 `main` 배포 시 AWS 인증 단계에서 실패할 수 있습니다.
+
 ## 배포 헬스체크
 
 배포 후 EC2, Docker, GitHub Actions에서 서버 생존 여부를 확인할 때 아래 Actuator 엔드포인트를 사용합니다.
