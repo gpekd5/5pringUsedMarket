@@ -1,0 +1,89 @@
+name: CI/CD Deploy
+
+on:
+  pull_request:
+    branches: [ "develop" ]
+
+  push:
+    branches: [ "develop" ]
+
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+  ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+
+jobs:
+  build:
+    name: Build, Test, and Push Image
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1. GitHub Repository 코드 가져오기
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      # Step 2. Java 17 설치
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'corretto'
+
+      # Step 3. Gradle 캐시
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      # Step 4. Gradle 실행 권한 부여
+      - name: Grant execute permission for Gradle
+        run: chmod +x ./gradlew
+
+      # Step 5. 테스트 실행
+      - name: Run tests
+        run: ./gradlew test
+
+      # Step 6. JAR 빌드
+      - name: Build JAR
+        run: ./gradlew bootJar
+
+      # Step 7. AWS 자격 증명 설정
+      # develop push일 때만 ECR push를 수행하므로 PR에서는 실행하지 않음
+      - name: Configure AWS credentials
+        if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      # Step 8. ECR 로그인
+      - name: Login to Amazon ECR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # Step 9. Docker 이미지 빌드 및 ECR Push
+      - name: Build and push Docker image
+        if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+        run: |
+          SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+          IMAGE_URI=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}
+
+          docker build -t ${IMAGE_URI}:${SHORT_SHA} .
+          docker push ${IMAGE_URI}:${SHORT_SHA}
+
+          docker tag ${IMAGE_URI}:${SHORT_SHA} ${IMAGE_URI}:latest
+          docker push ${IMAGE_URI}:latest
+
+          echo "Pushed image: ${IMAGE_URI}:${SHORT_SHA}"
+          echo "Pushed image: ${IMAGE_URI}:latest"
