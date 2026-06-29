@@ -1,7 +1,6 @@
 package com.example.fivespringusedmarket.product.dto;
 
 import com.example.fivespringusedmarket.product.entity.Product;
-import com.example.fivespringusedmarket.product.entity.ProductImage;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -23,7 +22,7 @@ public record ProductResponse(
         LocalDateTime updatedAt
 ) {
 
-    public static ProductResponse of(Product product, List<ProductImage> images) {
+    public static ProductResponse of(Product product, List<String> imageUrls) {
         return new ProductResponse(
                 product.getId(),
                 product.getSeller().getId(),
@@ -33,7 +32,7 @@ public record ProductResponse(
                 product.getDescription(),
                 product.getCategory().name(),
                 product.getStatus().name(),
-                images.stream().map(ProductImage::getImageUrl).toList(),
+                imageUrls,
                 false,
                 product.getCreatedAt(),
                 product.getUpdatedAt()

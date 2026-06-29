@@ -38,6 +38,7 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> auth
                         // WebSocket은 STOMP ChannelInterceptor에서 자체 인증하므로 HTTP 레벨에서는 열어둔다.
+                        .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
                         .requestMatchers("/ws-chat/**").permitAll()
                         .requestMatchers("/error").permitAll()
                         .requestMatchers(

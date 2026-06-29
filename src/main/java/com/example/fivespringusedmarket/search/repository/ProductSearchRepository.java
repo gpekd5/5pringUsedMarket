@@ -44,7 +44,7 @@ public class ProductSearchRepository {
                         product.price,
                         product.category.stringValue(),
                         product.status.stringValue(),
-                        productImage.imageUrl,
+                        productImage.imageKey,
                         product.createdAt))
                 .from(product)
                 .leftJoin(productImage) // 상품과 상품 이미지 테이블 연결

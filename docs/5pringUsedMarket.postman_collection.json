@@ -49,6 +49,10 @@
       "value": "1"
     },
     {
+      "key": "imageKey",
+      "value": ""
+    },
+    {
       "key": "couponId",
       "value": "1"
     },
@@ -70,6 +74,52 @@
     }
   ],
   "item": [
+    {
+      "name": "0. Health Check",
+      "item": [
+        {
+          "name": "0-1. Actuator Health",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actuator/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "actuator",
+                "health"
+              ]
+            },
+            "description": "배포 Health Check용 Actuator 엔드포인트입니다. health만 노출하며 Redis 컴포넌트 연결 상태를 함께 확인합니다."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('Actuator health is UP', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(json).to.have.property('status', 'UP');",
+                  "});",
+                  "pm.test('Redis health is UP', function () {",
+                  "  pm.expect(json.components).to.have.property('redis');",
+                  "  pm.expect(json.components.redis).to.have.property('status', 'UP');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
     {
       "name": "1. Auth / Member",
       "item": [
@@ -400,6 +450,54 @@
       "name": "2. Products",
       "item": [
         {
+          "name": "2-0. 상품 이미지 업로드",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/images",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "images"
+              ]
+            },
+            "description": "Private S3 Bucket에 이미지를 업로드하고 상품 등록/수정에 사용할 data.imageKey를 반환합니다. Postman에서 file 값을 로컬 이미지 파일로 선택한 뒤 실행하세요."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('imageKey가 반환된다', function () {",
+                  "  pm.expect(json).to.have.property('success', true);",
+                  "  pm.expect(json.data).to.have.property('imageKey');",
+                  "});",
+                  "if (json && json.data && json.data.imageKey) {",
+                  "  pm.collectionVariables.set('imageKey', json.data.imageKey);",
+                  "  pm.environment.set('imageKey', json.data.imageKey);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
           "name": "2-1. 상품 등록",
           "request": {
             "method": "POST",
@@ -411,7 +509,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"MacBook Pro 14인치\",\n  \"price\": 2500000,\n  \"description\": \"2023년 구매, 상태 매우 좋음\",\n  \"category\": \"DIGITAL\",\n  \"images\": [\n    \"https://cdn.example.com/images/product1.jpg\",\n    \"https://cdn.example.com/images/product2.jpg\"\n  ]\n}"
+              "raw": "{\n  \"title\": \"MacBook Pro 14인치\",\n  \"price\": 2500000,\n  \"description\": \"2023년 구매, 상태 매우 좋음\",\n  \"category\": \"DIGITAL\",\n  \"imageKeys\": [\n    \"{{imageKey}}\"\n  ]\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/products",
@@ -431,8 +529,14 @@
                 "type": "text/javascript",
                 "exec": [
                   "const json = pm.response.json();",
+                  "pm.test('상품 등록 응답 imageUrls는 Presigned URL 배열이다', function () {",
+                  "  pm.expect(json).to.have.property('success', true);",
+                  "  pm.expect(json.data).to.have.property('imageUrls');",
+                  "  pm.expect(json.data.imageUrls).to.be.an('array');",
+                  "});",
                   "if (json && json.data && json.data.productId) {",
                   "  pm.collectionVariables.set('productId', json.data.productId);",
+                  "  pm.environment.set('productId', json.data.productId);",
                   "}"
                 ]
               }
@@ -506,7 +610,7 @@
                 "{{productId}}"
               ]
             },
-            "description": "Auth 선택 API입니다. wished 확인이 필요하면 컬렉션 인증을 켜서 호출하세요."
+            "description": "Auth 선택 API입니다. 현재 구현은 wished를 false로 반환합니다."
           },
           "response": []
         },
@@ -522,7 +626,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"MacBook Pro 14인치 (수정)\",\n  \"price\": 2300000,\n  \"description\": \"가격 인하합니다\",\n  \"category\": \"DIGITAL\",\n  \"images\": [\n    \"https://cdn.example.com/images/new1.jpg\"\n  ]\n}"
+              "raw": "{\n  \"title\": \"MacBook Pro 14인치 (수정)\",\n  \"price\": 2300000,\n  \"description\": \"가격 인하합니다\",\n  \"category\": \"DIGITAL\",\n  \"imageKeys\": [\n    \"{{imageKey}}\"\n  ]\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/products/{{productId}}",
@@ -841,7 +945,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/products/search?keyword=맥북&category=DIGITAL&sort=latest&page=0&size=10",
+              "raw": "{{baseUrl}}/api/v1/products/search?keyword=맥북&category=DIGITAL&status=ON_SALE&sort=latest&page=0&size=10",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -859,6 +963,10 @@
                 {
                   "key": "category",
                   "value": "DIGITAL"
+                },
+                {
+                  "key": "status",
+                  "value": "ON_SALE"
                 },
                 {
                   "key": "sort",
@@ -887,7 +995,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/v2/products/search?keyword=맥북&category=DIGITAL&sort=latest&page=0&size=10",
+              "raw": "{{baseUrl}}/api/v2/products/search?keyword=맥북&category=DIGITAL&status=ON_SALE&sort=latest&page=0&size=10",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -905,6 +1013,10 @@
                 {
                   "key": "category",
                   "value": "DIGITAL"
+                },
+                {
+                  "key": "status",
+                  "value": "ON_SALE"
                 },
                 {
                   "key": "sort",

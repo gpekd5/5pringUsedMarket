@@ -2,6 +2,7 @@ package com.example.fivespringusedmarket.search.service;
 
 import com.example.fivespringusedmarket.common.exception.CustomException;
 import com.example.fivespringusedmarket.common.exception.ErrorCode;
+import com.example.fivespringusedmarket.image.service.S3PresignedUrlService;
 import com.example.fivespringusedmarket.member.entity.Member;
 import com.example.fivespringusedmarket.product.dto.ProductListItemResponse;
 import com.example.fivespringusedmarket.product.dto.ProductPageResponse;
@@ -44,6 +45,7 @@ public class SearchService {
     private final SearchLogRepository searchLogRepository;
     private final StringRedisTemplate stringRedisTemplate;
     private final CachedProductSearchReader cachedProductSearchService;
+    private final S3PresignedUrlService s3PresignedUrlService;
     private static final String RANKING_POST_KEY = "popular:keywords";
     private static final int POPULAR_SEARCH_LIMIT = 10;
 
@@ -66,7 +68,9 @@ public class SearchService {
 
         saveSearchLog(member, normalizedKeyword);
 
-        Page<ProductListItemResponse> products = productSearchRepository.search(condition, pageable);
+        // 검색 Repository는 DB에 저장된 대표 이미지 key를 가져오고, Service에서 응답용 URL로 변환한다.
+        Page<ProductListItemResponse> products = productSearchRepository.search(condition, pageable)
+                .map(this::withPresignedThumbnailUrl);
 
         return ProductPageResponse.of(products);
     }
@@ -92,7 +96,8 @@ public class SearchService {
         saveSearchLog(member, normalizedKeyword);
 
         // 실제 상품 목록 조회만 캐시 적용 Service에 위임합니다.
-        Page<ProductListItemResponse> products = cachedProductSearchService.search(condition, pageable);
+        Page<ProductListItemResponse> products = cachedProductSearchService.search(condition, pageable)
+                .map(this::withPresignedThumbnailUrl);
 
         return ProductPageResponse.of(products);
     }
@@ -244,5 +249,12 @@ public class SearchService {
         }catch (IllegalArgumentException e) {
             throw new CustomException(ErrorCode.INVALID_SEARCH_SORT_TYPE);
         }
+    }
+
+    /**
+     * 검색 목록의 thumbnailUrl 자리에 들어 있던 imageKey를 Presigned URL로 바꾼다.
+     */
+    private ProductListItemResponse withPresignedThumbnailUrl(ProductListItemResponse product) {
+        return product.withThumbnailUrl(s3PresignedUrlService.createPresignedUrl(product.thumbnailUrl()));
     }
 }
