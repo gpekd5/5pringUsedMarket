@@ -1,6 +1,7 @@
 package com.example.fivespringusedmarket.search.service;
 
 import com.example.fivespringusedmarket.product.dto.ProductListItemResponse;
+import com.example.fivespringusedmarket.product.dto.ProductPageResponse;
 import com.example.fivespringusedmarket.search.dto.ProductSearchCondition;
 import com.example.fivespringusedmarket.search.repository.ProductSearchRepository;
 import lombok.RequiredArgsConstructor;
@@ -25,12 +26,27 @@ public class CachedProductSearchReader {
 
     private final ProductSearchRepository productSearchRepository;
 
-    @Cacheable(cacheNames = "productSearch", key = "@searchCacheKeyGenerator.generate(#condition, #pageable)")
-    public Page<ProductListItemResponse> search(ProductSearchCondition condition, Pageable pageable) {
+    @Cacheable(
+            cacheNames = "productSearchV2",
+            key = "@searchCacheKeyGenerator.generate(#condition, #pageable)",
+            cacheManager = "caffeineCacheManager"
+    )
+    public ProductPageResponse searchWithCaffeine(ProductSearchCondition condition, Pageable pageable) {
+        log.info("DB 상품 검색 실행(caffeine) - condition={}, pageable={}", condition, pageable);
 
-        // 캐시 Miss일 때만 실행됩니다.
-        log.info("DB 상품 검색 실행 - condition={}, pageable={}", condition, pageable);
+        Page<ProductListItemResponse> products = productSearchRepository.search(condition, pageable);
+        return ProductPageResponse.of(products);
+    }
 
-        return productSearchRepository.search(condition, pageable);
+    @Cacheable(
+            cacheNames = "productSearchV3",
+            key = "@searchCacheKeyGenerator.generate(#condition, #pageable)",
+            cacheManager = "redisCacheManager"
+    )
+    public ProductPageResponse searchWithRedis(ProductSearchCondition condition, Pageable pageable) {
+        log.info("DB 상품 검색 실행(Redis) - condition={}, pageable={}", condition, pageable);
+
+        Page<ProductListItemResponse> products = productSearchRepository.search(condition, pageable);
+        return ProductPageResponse.of(products);
     }
 }

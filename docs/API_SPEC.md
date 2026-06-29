@@ -962,8 +962,93 @@ Redis ZSet
 * 응답 구조는 v1과 동일하며, `thumbnailUrl`은 10분 만료 Presigned URL이다.
 
 ---
+## 4-3. 상품 검색 v3
 
-## 4-3. 인기검색어 Top N 조회
+* Method: `GET`
+* Path: `/api/v3/products/search`
+* Auth: 선택
+* Cache: Redis Remote Cache
+
+### Query Parameters
+
+| 필드       | 타입      | 필수 | 설명                                       |
+| -------- | ------- | -- | ---------------------------------------- |
+| keyword  | String  | N  | 검색 키워드                                   |
+| category | String  | N  | 상품 카테고리                                  |
+| status   | String  | N  | 판매 상태 필터, 기본값 ON_SALE                    |
+| sort     | String  | N  | latest / oldest / price_asc / price_desc |
+| page     | Integer | N  | 기본값 0                                    |
+| size     | Integer | N  | 기본값 10                                   |
+
+### 처리 정책
+
+* v1, v2와 동일한 검색 결과를 반환한다.
+* 동일한 검색 조건의 반복 요청은 Redis Cache에서 응답할 수 있다.
+* Redis Cache는 애플리케이션 외부의 원격 캐시 저장소로 사용한다.
+* Scale-out 환경에서 여러 애플리케이션 서버가 동일한 검색 결과 캐시를 공유할 수 있다.
+* 캐시 전략은 Cache-aside 방식을 사용한다.
+* Cache Hit 시 Redis에 저장된 검색 결과를 반환한다.
+* Cache Miss 시 DB를 조회하고, 조회 결과를 Redis에 저장한 뒤 응답한다.
+* 검색 결과 캐시는 Redis String 자료구조를 사용한다.
+* 캐시 Key는 keyword, category, status, sort, page, size를 포함해야 한다.
+* 캐시 TTL은 5분을 기준으로 한다.
+* 상품 수정/삭제/상태 변경 시 Redis 검색 결과 캐시 무효화 전략을 고려한다.
+* 검색어 기록 저장 정책은 v1, v2와 동일하다.
+* 로그인 사용자가 `keyword`로 검색한 경우에만 `search_logs` 저장 및 Redis 인기검색어 집계를 수행한다.
+* 비로그인 검색은 검색어 기록과 인기검색어 집계에 반영하지 않는다.
+* 검색어 기록 저장과 인기검색어 집계는 캐시 Hit 여부와 관계없이 수행되어야 한다.
+* 따라서 검색어 기록 저장 로직은 `@Cacheable`이 적용된 검색 결과 조회 메서드 내부에 두지 않는다.
+
+### Redis Cache 처리 흐름
+
+```text
+상품 검색 v3 요청
+→ 검색 조건 파싱
+→ 로그인 사용자 + keyword 존재 시 search_logs 저장
+→ 로그인 사용자 + keyword 존재 시 Redis ZSet 인기검색어 score 증가
+→ Redis Cache 조회
+→ Cache Hit: Redis 검색 결과 반환
+→ Cache Miss: DB 조회
+→ DB 조회 결과를 Redis String value로 저장
+→ 검색 결과 응답
+```
+
+### Redis Cache Key 예시
+
+```text
+productSearch::keyword=맥북:category=DIGITAL:status=ON_SALE:sort=latest:page=0:size=10
+```
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "요청이 성공했습니다.",
+  "data": {
+    "content": [
+      {
+        "productId": 1,
+        "sellerId": 42,
+        "title": "MacBook Pro 14인치",
+        "price": 2500000,
+        "category": "DIGITAL",
+        "status": "ON_SALE",
+        "thumbnailUrl": "https://cdn.example.com/images/product1.jpg",
+        "createdAt": "2026-06-22T10:00:00"
+      }
+    ],
+    "page": 0,
+    "size": 10,
+    "totalElements": 1,
+    "totalPages": 1
+  }
+}
+```
+
+---
+
+## 4-4. 인기검색어 Top N 조회
 
 - Method: `GET`
 - Path: `/api/search/popular`
@@ -989,7 +1074,7 @@ Redis ZSet
 
 ---
 
-## 4-4. 최근 검색어 조회
+## 4-5. 최근 검색어 조회
 
 - Method: `GET`
 - Path: `/api/search/recent`
@@ -1033,7 +1118,7 @@ Redis ZSet
 
 ---
 
-## 4-5. 최근 검색어 삭제
+## 4-6. 최근 검색어 삭제
 
 * Method: `DELETE`
 * Path: `/api/search/recent/{searchLogId}`
@@ -1069,6 +1154,16 @@ Redis ZSet
 
 # 5. 관심상품 API
 
+## 관심상품 정책
+
+### 공통 정책
+
+- 관심상품 기능은 로그인 사용자만 사용할 수 있다.
+- 비로그인 사용자는 관심상품 등록, 취소, 목록 조회를 할 수 없다.
+- 관심상품은 `member_id + product_id` 조합으로 관리한다.
+- 같은 회원은 같은 상품을 중복으로 관심 등록할 수 없다.
+- DB 레벨에서도 `member_id + product_id` Unique 제약을 둔다.
+
 ## 5-1. 관심상품 등록
 
 - Method: `POST`
@@ -1077,8 +1172,11 @@ Redis ZSet
 
 ### 처리 정책
 
-- `member_id + product_id` 조합은 중복 저장될 수 없다.
-- DB Unique 제약 권장: `UNIQUE(member_id, product_id)`
+- 존재하지 않는 상품은 관심 등록할 수 없다.
+- `DELETED` 상태의 상품은 관심 등록할 수 없다.
+- 본인이 등록한 상품은 관심 등록할 수 없다.
+- `ON_SALE`, `RESERVED`, `SOLD` 상태의 상품은 관심 등록할 수 있다.
+- 이미 관심 등록한 상품을 다시 등록하려고 하면 예외를 반환한다.
 
 ### Response
 
@@ -1101,6 +1199,11 @@ Redis ZSet
 - Path: `/api/products/{productId}/wishes`
 - Auth: 필요
 
+### 처리 정책
+- 본인이 관심 등록한 상품만 취소할 수 있다.
+- 관심 등록하지 않은 상품을 취소하려고 하면 예외를 반환한다.
+- 존재하지 않는 상품에 대한 취소 요청은 예외를 반환한다.
+
 ### Response
 
 ```json
@@ -1121,6 +1224,70 @@ Redis ZSet
 - Method: `GET`
 - Path: `/api/members/me/wishes`
 - Auth: 필요
+
+### Query Parameters
+
+없음
+
+### 처리 정책
+
+- 로그인 사용자의 관심상품 목록만 조회한다.
+- 인증 Principal의 `memberId`를 기준으로 조회한다.
+- Request Body나 Query Parameter로 `memberId`를 받지 않는다.
+- 다른 사용자의 관심상품 목록은 조회할 수 없다.
+- 최신 관심 등록순으로 조회한다.
+- `DELETED` 상태의 상품은 목록에서 제외한다.
+- `SOLD` 상태의 상품은 목록에 포함한다.
+- 관심상품이 없으면 빈 배열을 반환한다.
+- 응답에는 관심 등록 시각인 `wishedAt`을 포함한다.
+- 목록 조회 결과는 전부 관심 등록된 상품이므로 별도의 `wished` 값은 반환하지 않는다.
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "관심상품 목록 조회에 성공했습니다.",
+  "data": [
+    {
+      "productId": 1,
+      "title": "아이폰 15 팝니다",
+      "price": 800000,
+      "category": "DIGITAL",
+      "status": "ON_SALE",
+      "thumbnailUrl": "https://image-url.com/1.png",
+      "wishedAt": "2026-06-26T15:30:00"
+    },
+    {
+      "productId": 2,
+      "title": "맥북 팝니다",
+      "price": 1200000,
+      "category": "DIGITAL",
+      "status": "SOLD",
+      "thumbnailUrl": "https://image-url.com/2.png",
+      "wishedAt": "2026-06-25T10:12:00"
+    }
+  ]
+}
+```
+
+### Empty Response
+
+```json
+{
+  "success": true,
+  "message": "관심상품 목록 조회에 성공했습니다.",
+  "data": []
+}
+```
+
+### Error
+
+| Status | Code | 설명 |
+|---|---|---|
+| 401 | UNAUTHORIZED | 인증되지 않은 사용자 |
+| 404 | MEMBER_NOT_FOUND | 회원을 찾을 수 없음 |
+```
 
 ---
 
