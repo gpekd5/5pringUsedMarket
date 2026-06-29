@@ -53,7 +53,12 @@ public enum ErrorCode {
     INVALID_SEARCH_SORT_TYPE(HttpStatus.BAD_REQUEST, "유효하지 않은 정렬입니다."),
 
   	INVALID_STATUS(HttpStatus.BAD_REQUEST, "유효하지 않은 상태 값입니다."),
-	  INVALID_STATUS_TRANSITION(HttpStatus.BAD_REQUEST, "허용되지 않는 상태 전이입니다."),
+    INVALID_STATUS_TRANSITION(HttpStatus.BAD_REQUEST, "허용되지 않는 상태 전이입니다."),
+
+    // Wish
+    WISH_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 관심상품으로 등록된 상품입니다."),
+    WISH_OWN_PRODUCT_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "본인 상품은 관심상품으로 등록할 수 없습니다."),
+    WISH_NOT_FOUND(HttpStatus.NOT_FOUND, "관심상품을 찾을 수 없습니다."),
 
     // 쿠폰
     COUPON_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 쿠폰입니다."),

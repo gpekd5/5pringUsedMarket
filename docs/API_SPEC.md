@@ -1069,6 +1069,16 @@ Redis ZSet
 
 # 5. 관심상품 API
 
+## 관심상품 정책
+
+### 공통 정책
+
+- 관심상품 기능은 로그인 사용자만 사용할 수 있다.
+- 비로그인 사용자는 관심상품 등록, 취소, 목록 조회를 할 수 없다.
+- 관심상품은 `member_id + product_id` 조합으로 관리한다.
+- 같은 회원은 같은 상품을 중복으로 관심 등록할 수 없다.
+- DB 레벨에서도 `member_id + product_id` Unique 제약을 둔다.
+
 ## 5-1. 관심상품 등록
 
 - Method: `POST`
@@ -1077,8 +1087,11 @@ Redis ZSet
 
 ### 처리 정책
 
-- `member_id + product_id` 조합은 중복 저장될 수 없다.
-- DB Unique 제약 권장: `UNIQUE(member_id, product_id)`
+- 존재하지 않는 상품은 관심 등록할 수 없다.
+- `DELETED` 상태의 상품은 관심 등록할 수 없다.
+- 본인이 등록한 상품은 관심 등록할 수 없다.
+- `ON_SALE`, `RESERVED`, `SOLD` 상태의 상품은 관심 등록할 수 있다.
+- 이미 관심 등록한 상품을 다시 등록하려고 하면 예외를 반환한다.
 
 ### Response
 
@@ -1101,6 +1114,11 @@ Redis ZSet
 - Path: `/api/products/{productId}/wishes`
 - Auth: 필요
 
+### 처리 정책
+- 본인이 관심 등록한 상품만 취소할 수 있다.
+- 관심 등록하지 않은 상품을 취소하려고 하면 예외를 반환한다.
+- 존재하지 않는 상품에 대한 취소 요청은 예외를 반환한다.
+
 ### Response
 
 ```json
@@ -1121,6 +1139,70 @@ Redis ZSet
 - Method: `GET`
 - Path: `/api/members/me/wishes`
 - Auth: 필요
+
+### Query Parameters
+
+없음
+
+### 처리 정책
+
+- 로그인 사용자의 관심상품 목록만 조회한다.
+- 인증 Principal의 `memberId`를 기준으로 조회한다.
+- Request Body나 Query Parameter로 `memberId`를 받지 않는다.
+- 다른 사용자의 관심상품 목록은 조회할 수 없다.
+- 최신 관심 등록순으로 조회한다.
+- `DELETED` 상태의 상품은 목록에서 제외한다.
+- `SOLD` 상태의 상품은 목록에 포함한다.
+- 관심상품이 없으면 빈 배열을 반환한다.
+- 응답에는 관심 등록 시각인 `wishedAt`을 포함한다.
+- 목록 조회 결과는 전부 관심 등록된 상품이므로 별도의 `wished` 값은 반환하지 않는다.
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "관심상품 목록 조회에 성공했습니다.",
+  "data": [
+    {
+      "productId": 1,
+      "title": "아이폰 15 팝니다",
+      "price": 800000,
+      "category": "DIGITAL",
+      "status": "ON_SALE",
+      "thumbnailUrl": "https://image-url.com/1.png",
+      "wishedAt": "2026-06-26T15:30:00"
+    },
+    {
+      "productId": 2,
+      "title": "맥북 팝니다",
+      "price": 1200000,
+      "category": "DIGITAL",
+      "status": "SOLD",
+      "thumbnailUrl": "https://image-url.com/2.png",
+      "wishedAt": "2026-06-25T10:12:00"
+    }
+  ]
+}
+```
+
+### Empty Response
+
+```json
+{
+  "success": true,
+  "message": "관심상품 목록 조회에 성공했습니다.",
+  "data": []
+}
+```
+
+### Error
+
+| Status | Code | 설명 |
+|---|---|---|
+| 401 | UNAUTHORIZED | 인증되지 않은 사용자 |
+| 404 | MEMBER_NOT_FOUND | 회원을 찾을 수 없음 |
+```
 
 ---
 
