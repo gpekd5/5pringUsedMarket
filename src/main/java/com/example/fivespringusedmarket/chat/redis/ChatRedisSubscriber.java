@@ -15,7 +15,7 @@ import tools.jackson.databind.ObjectMapper;
 /*
   Redis 채널에서 메시지를 수신해 이 서버의 STOMP 구독자에게 브로드캐스트한다.
   PatternTopic("chat-room:*")으로 모든 채팅방 채널을 단일 구독으로 처리한다.
-  pattern 파라미터에서 roomId를 파싱해 /sub/chat/rooms/{roomId}로 라우팅한다.
+  pattern은 구독 패턴(chat-room:*)이므로 roomId는 message.getChannel()에서 파싱한다.
  */
 @Slf4j
 @Component
@@ -36,7 +36,8 @@ public class ChatRedisSubscriber implements MessageListener {
 
     @Override
     public void onMessage(Message message, byte[] pattern) {
-        String channel = new String(pattern);
+        // pattern은 구독 패턴(chat-room:*)이므로 실제 채널명은 message.getChannel()에서 가져온다
+        String channel = new String(message.getChannel());
         String roomId = channel.substring(CHAT_CHANNEL_PREFIX.length());
 
         try {
