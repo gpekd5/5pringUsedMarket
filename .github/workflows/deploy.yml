@@ -4,21 +4,21 @@
 
   # 워크플로우 실행 조건
   on:
-    # develop 브랜치를 대상으로 PR이 열리거나 업데이트되면 실행된다.
+    # develop 또는 main 브랜치를 대상으로 PR이 열리거나 업데이트되면 실행된다.
     # 이때는 빌드/테스트만 수행하고, ECR Push와 EC2 배포는 하지 않는다.
     pull_request:
-      branches: [ "develop" ]
+      branches: [ "develop", "main" ]
 
-    # develop 브랜치에 직접 push되거나 PR이 merge되면 실행된다.
+    # main 브랜치에 직접 push되거나 PR이 merge되면 실행된다.
     # 이때는 빌드/테스트 후 Docker 이미지를 ECR에 Push하고 EC2에 배포한다.
     push:
-      branches: [ "develop" ]
+      branches: [ "main" ]
 
     # GitHub Actions 화면에서 수동 실행할 수 있도록 허용한다.
     workflow_dispatch:
 
   # 같은 브랜치에서 워크플로우가 중복 실행될 경우 이전 실행을 취소한다.
-  # develop에 연속 push/merge가 발생했을 때 이전 이미지가 뒤늦게 배포되는 상황을 방지한다.
+  # main에 연속 push/merge가 발생했을 때 이전 이미지가 뒤늦게 배포되는 상황을 방지한다.
   concurrency:
     group: deploy-${{ github.workflow }}-${{ github.ref }}
     cancel-in-progress: true
@@ -132,9 +132,9 @@
 
         # Step 8. AWS 자격 증명 설정
         # OIDC를 사용해 GitHub Actions가 AWS IAM Role을 임시로 Assume한다.
-        # PR에서는 실행하지 않고, develop push일 때만 실행한다.
+        # PR에서는 실행하지 않고, main push일 때만 실행한다.
         - name: Configure AWS credentials
-          if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+          if: github.event_name == 'push' && github.ref == 'refs/heads/main'
           uses: aws-actions/configure-aws-credentials@v4
           with:
             role-to-assume: ${{ vars.AWS_ROLE_ARN }}
@@ -142,15 +142,15 @@
 
         # Step 9. ECR 로그인
         # Docker 이미지를 AWS ECR에 Push하기 위해 ECR 인증을 수행한다.
-        # PR에서는 실행하지 않고, develop push일 때만 실행한다.
+        # PR에서는 실행하지 않고, main push일 때만 실행한다.
         - name: Login to Amazon ECR
-          if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+          if: github.event_name == 'push' && github.ref == 'refs/heads/main'
           uses: aws-actions/amazon-ecr-login@v2
 
         # Step 10. Docker 이미지 빌드 및 ECR Push
-        # develop에 merge/push된 코드만 Docker 이미지로 빌드하고 ECR에 업로드한다.
+        # main에 merge/push된 코드만 Docker 이미지로 빌드하고 ECR에 업로드한다.
         - name: Build and push Docker image
-          if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+          if: github.event_name == 'push' && github.ref == 'refs/heads/main'
           run: |
             IMAGE_TAG=${{ steps.vars.outputs.short_sha }}
             
@@ -182,9 +182,9 @@
       # build job이 성공한 뒤에만 deploy job을 실행한다.
       needs: build
 
-      # develop push 또는 merge 때만 실제 운영 EC2에 배포한다.
+      # main push 또는 merge 때만 실제 운영 EC2에 배포한다.
       # PR에서는 배포하지 않는다.
-      if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
       runs-on: ubuntu-latest
 

@@ -852,7 +852,8 @@ entity끼리의 관계 설정하기
         </aside>
         
     - [ ]  **④ GitHub Actions CI 파이프라인 구성**
-        - `main` 또는 `develop` 브랜치에 **Push 또는 PR 이벤트** 발생 시 자동으로 워크플로우 실행
+        - `develop` 또는 `main` 대상 **PR 이벤트** 발생 시 빌드/테스트 워크플로우 실행
+        - `main` 브랜치 **Push 또는 Merge 이벤트** 발생 시 운영 배포 워크플로우 실행
         - 워크플로우에 다음 단계를 포함할 것:
             1. **소스 코드 체크아웃**
             2. **JDK 설정 및 Gradle/Maven 빌드**
@@ -863,7 +864,7 @@ entity끼리의 관계 설정하기
         
         - **💡 CI 파이프라인 구성 시 고려해볼 것!**
             1. 빌드 캐시(`actions/cache`)를 활용하면 Gradle 의존성 다운로드 시간을 얼마나 단축할 수 있을까?
-            2. **PR 단계에서는 테스트만** 실행하고, `main` 머지 시에만 Docker Push를 하도록 분기하는 이유는?
+            2. **PR 단계에서는 테스트만** 실행하고, `main` 머지 시에만 Docker Push 및 운영 배포를 하도록 분기하는 이유는?
             3. GitHub Secrets에 저장해야 할 값은? 
                 - `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `ECR_REPOSITORY` 등
         </aside>
