@@ -37,7 +37,7 @@ public class WishQueryRepository {
                         product.price,
                         product.category,
                         product.status,
-                        productImage.imageUrl,
+                        productImage.imageKey,
                         wish.createdAt
                 ))
                 .from(wish)

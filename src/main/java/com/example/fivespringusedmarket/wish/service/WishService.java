@@ -2,6 +2,7 @@ package com.example.fivespringusedmarket.wish.service;
 
 import com.example.fivespringusedmarket.common.exception.CustomException;
 import com.example.fivespringusedmarket.common.exception.ErrorCode;
+import com.example.fivespringusedmarket.image.service.S3PresignedUrlService;
 import com.example.fivespringusedmarket.member.entity.Member;
 import com.example.fivespringusedmarket.product.entity.Product;
 import com.example.fivespringusedmarket.product.entity.ProductStatus;
@@ -27,6 +28,7 @@ public class WishService {
 
     private final WishRepository wishRepository;
     private final WishQueryRepository wishQueryRepository;
+    private final S3PresignedUrlService s3PresignedUrlService;
 
 
     /**
@@ -57,7 +59,25 @@ public class WishService {
     }
 
     public List<WishProductResponse> getMyWishes(Long memberId) {
-        return wishQueryRepository.findMyWishes(memberId);
+        return wishQueryRepository.findMyWishes(memberId)
+                .stream()
+                .map(this::withPresignedThumbnailUrl)
+                .toList();
+    }
+
+    /**
+     * 관심상품 목록의 thumbnailUrl 자리에 들어 있던 imageKey를 Presigned URL로 바꾼다.
+     */
+    private WishProductResponse withPresignedThumbnailUrl(WishProductResponse wishProduct) {
+        return new WishProductResponse(
+                wishProduct.productId(),
+                wishProduct.title(),
+                wishProduct.price(),
+                wishProduct.category(),
+                wishProduct.status(),
+                s3PresignedUrlService.createPresignedUrl(wishProduct.thumbnailUrl()),
+                wishProduct.wishedAt()
+        );
     }
 
     public long countMyWishes(Long memberId) {
