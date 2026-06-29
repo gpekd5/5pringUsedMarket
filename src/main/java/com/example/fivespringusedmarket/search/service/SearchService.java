@@ -23,6 +23,11 @@ import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import com.example.fivespringusedmarket.search.cache.SearchCacheKeyGenerator;
+import com.example.fivespringusedmarket.search.metrics.SearchCacheStats;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
+import org.springframework.beans.factory.annotation.Qualifier;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
@@ -48,6 +53,11 @@ public class SearchService {
     private static final String POPULAR_SEARCH_KEY  = "popular:keywords";
     private final S3PresignedUrlService s3PresignedUrlService;
     private static final int POPULAR_SEARCH_LIMIT = 10;
+    private final SearchCacheKeyGenerator searchCacheKeyGenerator;
+    private final SearchCacheStats searchCacheStats;
+
+    @Qualifier("caffeineCacheManager")
+    private final CacheManager caffeineCacheManager;
 
     /**
      * 캐시가 적용되지 않은 상품 검색 v1 기능입니다.
@@ -95,6 +105,9 @@ public class SearchService {
         // 검색 행위 기록은 캐시 여부와 상관없이 매번 저장합니다.
         saveSearchLog(member, normalizedKeyword);
 
+        // 캐시 Hit/Miss 측정
+        recordCaffeineCacheStats(condition, pageable);
+
         // 실제 상품 목록 조회만 캐시 적용 Service에 위임합니다.
         ProductPageResponse response =
                 cachedProductSearchService.searchWithCaffeine(condition, pageable);
@@ -121,6 +134,9 @@ public class SearchService {
 
         // 검색 행위 기록은 캐시 여부와 상관없이 매번 저장합니다.
         saveSearchLog(member, normalizedKeyword);
+
+        // 캐시 Hit/Miss 측정
+        recordRedisCacheStats(condition, pageable);
 
         ProductPageResponse response =
                 cachedProductSearchService.searchWithRedis(condition, pageable);
@@ -315,5 +331,32 @@ public class SearchService {
         return product.withThumbnailUrl(
                 s3PresignedUrlService.createPresignedUrl(thumbnailUrl)
         );
+    }
+
+    private void recordCaffeineCacheStats(ProductSearchCondition condition, Pageable pageable) {
+        String cacheKey = searchCacheKeyGenerator.generate(condition, pageable);
+        Cache cache = caffeineCacheManager.getCache("productSearchV2");
+
+        if (cache != null && cache.get(cacheKey) != null) {
+            searchCacheStats.increaseCaffeineHit();
+            return;
+        }
+
+        searchCacheStats.increaseCaffeineMiss();
+    }
+
+    private void recordRedisCacheStats(ProductSearchCondition condition, Pageable pageable) {
+        String cacheKey = searchCacheKeyGenerator.generate(condition, pageable);
+
+        String redisCacheKey = "productSearchV3::" + cacheKey;
+
+        Boolean hasKey = stringRedisTemplate.hasKey(redisCacheKey);
+
+        if (Boolean.TRUE.equals(hasKey)) {
+            searchCacheStats.increaseRedisHit();
+            return;
+        }
+
+        searchCacheStats.increaseRedisMiss();
     }
 }
