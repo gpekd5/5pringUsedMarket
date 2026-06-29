@@ -24,6 +24,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -51,7 +52,10 @@ public class ProductService {
      * imageKey를 받은 뒤, 그 key 목록을 상품 등록 요청에 담아 보내는 흐름이다.</p>
      */
     @Transactional
-    @CacheEvict(cacheNames = "productSearch", allEntries = true)
+    @Caching(evict = {
+            @CacheEvict(cacheNames = "productSearchV2", allEntries = true, cacheManager = "caffeineCacheManager"),
+            @CacheEvict(cacheNames = "productSearchV3", allEntries = true, cacheManager = "redisCacheManager")
+    })
     public ProductResponse createProduct(Long memberId, CreateProductRequest request) {
         if (request.price() < 0) {
             throw new CustomException(ErrorCode.INVALID_PRICE);
@@ -77,7 +81,10 @@ public class ProductService {
      * 상품 정보를 수정하고, imageKeys 필드가 전달된 경우 기존 이미지 목록을 새 key 목록으로 교체한다.
      */
     @Transactional
-    @CacheEvict(cacheNames = "productSearch", allEntries = true)
+    @Caching(evict = {
+            @CacheEvict(cacheNames = "productSearchV2", allEntries = true, cacheManager = "caffeineCacheManager"),
+            @CacheEvict(cacheNames = "productSearchV3", allEntries = true, cacheManager = "redisCacheManager")
+    })
     public ProductResponse updateProduct(Long memberId, Long productId, UpdateProductRequest request) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new CustomException(ErrorCode.PRODUCT_NOT_FOUND));
@@ -101,7 +108,10 @@ public class ProductService {
     }
 
     @Transactional
-    @CacheEvict(cacheNames = "productSearch", allEntries = true)
+    @Caching(evict = {
+            @CacheEvict(cacheNames = "productSearchV2", allEntries = true, cacheManager = "caffeineCacheManager"),
+            @CacheEvict(cacheNames = "productSearchV3", allEntries = true, cacheManager = "redisCacheManager")
+    })
     public void deleteProduct(Long memberId, Long productId) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new CustomException(ErrorCode.PRODUCT_NOT_FOUND));
@@ -200,7 +210,10 @@ public class ProductService {
     }
 
     @Transactional
-    @CacheEvict(cacheNames = "productSearch", allEntries = true)
+    @Caching(evict = {
+            @CacheEvict(cacheNames = "productSearchV2", allEntries = true, cacheManager = "caffeineCacheManager"),
+            @CacheEvict(cacheNames = "productSearchV3", allEntries = true, cacheManager = "redisCacheManager")
+    })
     public void updateProductStatus(Long memberId, Long productId, String status) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new CustomException(ErrorCode.PRODUCT_NOT_FOUND));
@@ -225,7 +238,10 @@ public class ProductService {
     }
 
     @Transactional
-    @CacheEvict(cacheNames = "productSearch", allEntries = true)
+    @Caching(evict = {
+            @CacheEvict(cacheNames = "productSearchV2", allEntries = true, cacheManager = "caffeineCacheManager"),
+            @CacheEvict(cacheNames = "productSearchV3", allEntries = true, cacheManager = "redisCacheManager")
+    })
     public void cancelReservation(Long memberId, Long productId) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new CustomException(ErrorCode.PRODUCT_NOT_FOUND));
