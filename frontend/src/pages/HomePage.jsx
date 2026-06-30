@@ -8,13 +8,16 @@ import {
   Search,
   ShieldCheck,
   Ticket,
+  X,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getAccessToken } from '../api/authStorage.js';
 import {
+  deleteRecentSearch,
   getPopularSearches,
   getProductApiErrorMessage,
+  getRecentSearches,
   searchProducts,
 } from '../api/productApi.js';
 import { addWish, getMyWishes, getWishApiErrorMessage, removeWish } from '../api/wishApi.js';
@@ -59,9 +62,11 @@ export default function HomePage() {
   const [submittedKeyword, setSubmittedKeyword] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [popularSearches, setPopularSearches] = useState([]);
+  const [recentSearches, setRecentSearches] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [wishUpdatingProductId, setWishUpdatingProductId] = useState(null);
+  const [deletingRecentSearchId, setDeletingRecentSearchId] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
 
   const hasFilter = Boolean(submittedKeyword || selectedCategory);
@@ -149,8 +154,23 @@ export default function HomePage() {
     }
   };
 
+  const loadRecentSearches = async () => {
+    if (!getAccessToken()) {
+      setRecentSearches([]);
+      return;
+    }
+
+    try {
+      const recentKeywords = await getRecentSearches();
+      setRecentSearches(recentKeywords);
+    } catch {
+      setRecentSearches([]);
+    }
+  };
+
   useEffect(() => {
     loadProducts({ keyword: '', category: '' });
+    loadRecentSearches();
     loadPopularSearches();
   }, []);
 
@@ -160,6 +180,7 @@ export default function HomePage() {
     const nextKeyword = searchInput.trim();
     setSubmittedKeyword(nextKeyword);
     await loadProducts({ page: 0, keyword: nextKeyword, category: selectedCategory });
+    await loadRecentSearches();
     await loadPopularSearches();
   };
 
@@ -172,7 +193,32 @@ export default function HomePage() {
     setSearchInput(keyword);
     setSubmittedKeyword(keyword);
     await loadProducts({ page: 0, keyword, category: selectedCategory });
+    await loadRecentSearches();
     await loadPopularSearches();
+  };
+
+  const handleRecentKeywordClick = async (keyword) => {
+    setSearchInput(keyword);
+    setSubmittedKeyword(keyword);
+    await loadProducts({ page: 0, keyword, category: selectedCategory });
+    await loadRecentSearches();
+    await loadPopularSearches();
+  };
+
+  const handleDeleteRecentSearch = async (searchLogId) => {
+    setDeletingRecentSearchId(searchLogId);
+    setErrorMessage('');
+
+    try {
+      await deleteRecentSearch(searchLogId);
+      setRecentSearches((prevSearches) =>
+        prevSearches.filter((recent) => recent.searchLogId !== searchLogId),
+      );
+    } catch (error) {
+      setErrorMessage(getProductApiErrorMessage(error, '최근 검색어를 삭제하지 못했습니다.'));
+    } finally {
+      setDeletingRecentSearchId(null);
+    }
   };
 
   const handleReset = () => {
@@ -193,6 +239,7 @@ export default function HomePage() {
 
   const handleRefresh = () => {
     loadProducts({ page: 0, keyword: submittedKeyword, category: selectedCategory });
+    loadRecentSearches();
     loadPopularSearches();
   };
 
@@ -294,6 +341,39 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {getAccessToken() && recentSearches.length > 0 && (
+        <section className="mb-3 rounded-[28px] border border-[var(--color-border)] bg-white p-4 shadow-[0_10px_28px_rgba(15,23,42,0.04)]">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center">
+            <div className="shrink-0 text-sm font-black text-[var(--color-text-main)]">내 검색어</div>
+            <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto pb-1 md:pb-0">
+              {recentSearches.map((recent) => (
+                <span
+                  key={recent.searchLogId}
+                  className="inline-flex shrink-0 items-center overflow-hidden rounded-full border border-[var(--color-border)] bg-white text-sm font-black text-[var(--color-text-main)] transition hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-soft)]"
+                >
+                  <button
+                    type="button"
+                    onClick={() => handleRecentKeywordClick(recent.keyword)}
+                    className="px-3 py-2 transition hover:text-[var(--color-primary-dark)]"
+                  >
+                    {recent.keyword}
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`${recent.keyword} 검색어 삭제`}
+                    onClick={() => handleDeleteRecentSearch(recent.searchLogId)}
+                    disabled={deletingRecentSearchId === recent.searchLogId}
+                    className="flex h-full items-center border-l border-[var(--color-border)] px-2.5 py-2 text-[var(--color-text-sub)] transition hover:bg-red-50 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <X size={14} />
+                  </button>
+                </span>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       <section className="mb-5 rounded-[28px] border border-[var(--color-border)] bg-white p-4 shadow-[0_10px_28px_rgba(15,23,42,0.04)]">
         <div className="flex flex-col gap-3 md:flex-row md:items-center">

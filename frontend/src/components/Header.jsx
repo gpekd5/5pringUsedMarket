@@ -1,6 +1,6 @@
 import { Heart, Home, LogOut, MessageCircle, Plus, Search, ShieldCheck, ShoppingBag, Ticket, UserRound } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Link, NavLink } from 'react-router-dom';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { fetchMe, logout } from '../api/authApi.js';
 import { AUTH_CHANGE_EVENT, clearAuthStorage, getAccessToken, getStoredAuthUser } from '../api/authStorage.js';
 import routePaths from '../routes/routePaths.js';
@@ -32,7 +32,10 @@ function getAuthSnapshot() {
 }
 
 export default function Header() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [auth, setAuth] = useState(getAuthSnapshot);
+  const [searchInput, setSearchInput] = useState('');
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
@@ -75,6 +78,28 @@ export default function Header() {
     };
   }, [auth.isAuthenticated, auth.user]);
 
+  useEffect(() => {
+    if (location.pathname !== routePaths.search) {
+      return;
+    }
+
+    const params = new URLSearchParams(location.search);
+    setSearchInput(params.get('keyword') || '');
+  }, [location.pathname, location.search]);
+
+  const handleSearchSubmit = (event) => {
+    event.preventDefault();
+
+    const keyword = searchInput.trim();
+    const params = new URLSearchParams();
+
+    if (keyword) {
+      params.set('keyword', keyword);
+    }
+
+    navigate(`${routePaths.search}${params.toString() ? `?${params.toString()}` : ''}`);
+  };
+
   const handleLogout = async () => {
     setIsLoggingOut(true);
 
@@ -101,10 +126,21 @@ export default function Header() {
             </div>
           </NavLink>
 
-          <div className="hidden max-w-[380px] flex-1 items-center gap-3 rounded-[22px] bg-white px-4 py-3 text-sm text-[var(--color-text-sub)] shadow-sm ring-1 ring-[var(--color-border)] md:flex">
+          <form
+            className="hidden max-w-[380px] flex-1 items-center gap-3 rounded-[22px] bg-white px-4 py-3 text-sm text-[var(--color-text-sub)] shadow-sm ring-1 ring-[var(--color-border)] transition focus-within:ring-[var(--color-primary)] md:flex"
+            onSubmit={handleSearchSubmit}
+          >
             <Search size={20} className="text-[var(--color-primary)]" />
-            <span className="font-semibold">상품명, 지역, 카테고리 검색</span>
-          </div>
+            <input
+              className="min-w-0 flex-1 bg-transparent font-semibold text-[var(--color-text-main)] outline-none placeholder:text-[var(--color-text-sub)]"
+              value={searchInput}
+              onChange={(event) => setSearchInput(event.target.value)}
+              placeholder="상품명, 지역, 카테고리 검색"
+            />
+            <button type="submit" className="sr-only">
+              검색
+            </button>
+          </form>
 
           <nav className="ml-auto hidden items-center gap-1 lg:flex">
             {navItems.map(({ to, label, icon: Icon }) => (

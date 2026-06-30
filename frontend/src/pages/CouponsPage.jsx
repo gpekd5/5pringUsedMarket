@@ -226,7 +226,7 @@ export default function CouponsPage() {
       <PageHeader
         eyebrow="Coupons"
         title="선착순 쿠폰"
-        description="진행 중인 쿠폰 이벤트를 확인하고 원하는 혜택을 빠르게 받아보세요."
+        description="상품을 등록한 회원에게 제공되는 외부 제휴 쿠폰을 확인하고 빠르게 받아보세요."
         action={
           <div className="grid grid-cols-3 gap-2 text-center text-xs font-black sm:min-w-[320px]">
             <div className="rounded-2xl bg-slate-50 px-3 py-2">
@@ -244,6 +244,10 @@ export default function CouponsPage() {
           </div>
         }
       />
+
+      <div className="mb-5 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700">
+        상품을 1개 이상 등록한 회원만 쿠폰을 발급받을 수 있어요.
+      </div>
 
       {message && (
         <div

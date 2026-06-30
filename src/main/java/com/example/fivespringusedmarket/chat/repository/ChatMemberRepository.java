@@ -22,6 +22,8 @@ public interface ChatMemberRepository extends JpaRepository<ChatMember,Long> {
 
     boolean existsByChatRoomIdAndMemberId(Long chatRoomId, Long memberId);
 
+    long countByMemberId(Long memberId);
+
     Optional<ChatMember> findByChatRoomIdAndMemberId(Long chatRoomId, Long memberId);
 
     @Query("SELECT cm FROM ChatMember cm JOIN FETCH cm.member WHERE cm.chatRoom.id = :roomId")

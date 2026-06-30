@@ -11,6 +11,7 @@ import NotFoundPage from './pages/NotFoundPage.jsx';
 import ProductCreatePage from './pages/ProductCreatePage.jsx';
 import ProductDetailPage from './pages/ProductDetailPage.jsx';
 import ProductEditPage from './pages/ProductEditPage.jsx';
+import SearchResultsPage from './pages/SearchResultsPage.jsx';
 import SignupPage from './pages/SignupPage.jsx';
 import WishListPage from './pages/WishListPage.jsx';
 
@@ -21,6 +22,7 @@ const router = createBrowserRouter([
     errorElement: <NotFoundPage />,
     children: [
       { index: true, element: <HomePage /> },
+      { path: 'search', element: <SearchResultsPage /> },
       { path: 'login', element: <LoginPage /> },
       { path: 'signup', element: <SignupPage /> },
       { path: 'mypage', element: <MyPage /> },

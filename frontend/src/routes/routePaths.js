@@ -1,5 +1,6 @@
 const routePaths = {
   home: '/',
+  search: '/search',
   login: '/login',
   signup: '/signup',
   productNew: '/products/new',

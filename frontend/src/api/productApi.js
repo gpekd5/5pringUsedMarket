@@ -140,3 +140,16 @@ export async function getPopularSearches() {
 
   return Array.isArray(popularSearches) ? popularSearches : [];
 }
+
+export async function getRecentSearches() {
+  const response = await apiClient.get('/api/search/recent');
+  const recentSearches = unwrapApiResponse(response);
+
+  return Array.isArray(recentSearches) ? recentSearches : [];
+}
+
+export async function deleteRecentSearch(searchLogId) {
+  const response = await apiClient.delete(`/api/search/recent/${searchLogId}`);
+
+  return unwrapApiResponse(response);
+}

@@ -14,11 +14,11 @@
 -- user_coupons
 --
 -- 실행 전:
--- 회원가입 API로 아래 계정 3개를 먼저 생성하는 것을 권장
+-- local 프로필에서 생성되는 기본 계정을 사용합니다.
+-- 계정이 없다면 회원가입 API로 먼저 생성해주세요.
 --
--- demo_seller@test.com / Password123! / 데모판매자
--- demo_buyer@test.com  / Password123! / 데모구매자
--- demo_admin@test.com  / Password123! / 데모관리자
+-- admin@test.com  / Password123! / 관리자
+-- member@test.com / Password123! / 일반회원
 -- =========================================================
 
 START TRANSACTION;
@@ -30,24 +30,24 @@ START TRANSACTION;
 SET @seller_id = (
     SELECT id
     FROM members
-    WHERE email = 'demo_seller@test.com'
+    WHERE email = 'admin@test.com'
 );
 
 SET @buyer_id = (
     SELECT id
     FROM members
-    WHERE email = 'demo_buyer@test.com'
+    WHERE email = 'member@test.com'
 );
 
 SET @admin_id = (
     SELECT id
     FROM members
-    WHERE email = 'demo_admin@test.com'
+    WHERE email = 'admin@test.com'
 );
 
 UPDATE members
 SET role = 'ADMIN'
-WHERE email = 'demo_admin@test.com';
+WHERE email = 'admin@test.com';
 
 
 -- =========================================================
@@ -575,23 +575,76 @@ INSERT INTO coupons (
     created_at
 ) VALUES
       (
-          '[DEMO] 스타벅스 아메리카노 기프티콘',
+          '[DEMO] 메가커피 아메리카노 쿠폰',
           100,
           0,
-          NOW(),
+          DATE_SUB(NOW(), INTERVAL 1 DAY),
           DATE_ADD(NOW(), INTERVAL 7 DAY),
           DATE_ADD(NOW(), INTERVAL 30 DAY),
           NOW()
       ),
       (
-          '[DEMO] 파리바게트 5천원 기프티콘',
+          '[DEMO] 배달의민족 5천원 쿠폰',
           100,
-          0,
-          NOW(),
+          1,
+          DATE_SUB(NOW(), INTERVAL 1 DAY),
+          DATE_ADD(NOW(), INTERVAL 7 DAY),
+          DATE_ADD(NOW(), INTERVAL 30 DAY),
+          NOW()
+      ),
+      (
+          '[DEMO] GS25 편의점 3천원 쿠폰',
+          100,
+          1,
+          DATE_SUB(NOW(), INTERVAL 1 DAY),
           DATE_ADD(NOW(), INTERVAL 7 DAY),
           DATE_ADD(NOW(), INTERVAL 30 DAY),
           NOW()
       );
+
+-- =========================================================
+-- 10. 사용자 보유 쿠폰 데이터 생성
+--
+-- CouponService 정책 기준:
+-- coupons.issued_qty는 user_coupons 발급 건수와 맞춰 둔다.
+-- used_at이 null이면 사용 가능, 값이 있으면 사용 완료 상태다.
+-- =========================================================
+
+INSERT INTO user_coupons (
+    member_id,
+    coupon_id,
+    code,
+    issued_at,
+    expire_at,
+    used_at
+)
+SELECT
+    @buyer_id,
+    c.id,
+    'DEMO-BAEMIN-0001',
+    DATE_SUB(NOW(), INTERVAL 2 HOUR),
+    c.expire_at,
+    NULL
+FROM coupons c
+WHERE c.name = '[DEMO] 배달의민족 5천원 쿠폰';
+
+INSERT INTO user_coupons (
+    member_id,
+    coupon_id,
+    code,
+    issued_at,
+    expire_at,
+    used_at
+)
+SELECT
+    @buyer_id,
+    c.id,
+    'DEMO-GS25-0001',
+    DATE_SUB(NOW(), INTERVAL 1 DAY),
+    c.expire_at,
+    DATE_SUB(NOW(), INTERVAL 3 HOUR)
+FROM coupons c
+WHERE c.name = '[DEMO] GS25 편의점 3천원 쿠폰';
 
 
 COMMIT;
@@ -603,7 +656,7 @@ COMMIT;
 
 SELECT id, email, nickname, role
 FROM members
-WHERE email LIKE 'demo_%@test.com';
+WHERE email IN ('admin@test.com', 'member@test.com');
 
 SELECT id, title, price, category, status, member_id
 FROM products
@@ -643,3 +696,9 @@ ORDER BY msg.chat_room_id, msg.id;
 SELECT id, name, total_qty, issued_qty, event_start_at, event_end_at, expire_at
 FROM coupons
 WHERE name LIKE '[DEMO]%';
+
+SELECT uc.id, uc.member_id, uc.coupon_id, c.name, uc.code, uc.issued_at, uc.expire_at, uc.used_at
+FROM user_coupons uc
+         JOIN coupons c ON uc.coupon_id = c.id
+WHERE c.name LIKE '[DEMO]%'
+ORDER BY uc.id;

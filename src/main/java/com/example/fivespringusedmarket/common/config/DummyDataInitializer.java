@@ -17,8 +17,10 @@ import org.springframework.stereotype.Component;
  * 인덱스 성능 테스트용 대용량 더미 데이터를 적재한다.
  * products 5만 건 + product_images 5만 건(대표 이미지 1장)을 1,000건 단위 배치 INSERT로 삽입한다.
  * 이미 데이터가 존재하면 중복 적재를 건너뛴다.
+ *
+ * <p>일반 local 실행에서는 동작하지 않고, 성능 테스트가 필요할 때만 bulk-dummy 프로필을 함께 활성화한다.</p>
  */
-@Profile("local")
+@Profile("bulk-dummy")
 @Component
 public class DummyDataInitializer implements ApplicationRunner {
 
