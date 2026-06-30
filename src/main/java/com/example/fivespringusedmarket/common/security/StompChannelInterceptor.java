@@ -1,5 +1,6 @@
 package com.example.fivespringusedmarket.common.security;
 
+import com.example.fivespringusedmarket.auth.repository.AccessTokenBlacklistRepository;
 import com.example.fivespringusedmarket.chat.repository.ChatMemberRepository;
 import com.example.fivespringusedmarket.common.exception.CustomException;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,7 @@ public class StompChannelInterceptor implements ChannelInterceptor {
 
     private final JwtUtil jwtUtil;
     private final ChatMemberRepository chatMemberRepository;
+    private final AccessTokenBlacklistRepository accessTokenBlacklistRepository;
 
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
@@ -43,6 +45,9 @@ public class StompChannelInterceptor implements ChannelInterceptor {
 
             try {
                 jwtUtil.isValidToken(token);
+                if (accessTokenBlacklistRepository.exists(token)) {
+                    throw new IllegalArgumentException("STOMP 인증 실패: 로그아웃된 토큰입니다.");
+                }
                 AuthMember authMember = jwtUtil.extractAuthMember(token);
                 accessor.setUser(new StompPrincipal(String.valueOf(authMember.memberId())));
             } catch (CustomException e) {

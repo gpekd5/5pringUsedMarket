@@ -2,9 +2,12 @@ package com.example.fivespringusedmarket.wish.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
 
 import com.example.fivespringusedmarket.common.exception.CustomException;
 import com.example.fivespringusedmarket.common.exception.ErrorCode;
+import com.example.fivespringusedmarket.image.service.S3PresignedUrlService;
 import com.example.fivespringusedmarket.member.entity.Member;
 import com.example.fivespringusedmarket.member.repository.MemberRepository;
 import com.example.fivespringusedmarket.product.entity.Product;
@@ -23,6 +26,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 @SpringBootTest(properties = {
         "spring.datasource.url=jdbc:h2:mem:wish-facade-test",
@@ -51,6 +55,9 @@ class WishFacadeTest {
     @Autowired
     private ProductImageRepository productImageRepository;
 
+    @MockitoBean
+    private S3PresignedUrlService s3PresignedUrlService;
+
     private Member buyer;
     private Member seller;
 
@@ -68,6 +75,11 @@ class WishFacadeTest {
         seller = memberRepository.saveAndFlush(
                 Member.create("seller@test.com", "encoded-password", "판매자")
         );
+
+        // WishFacadeTest는 관심상품 조회 정책만 검증하므로 실제 AWS SDK Presigner를 호출하지 않는다.
+        when(s3PresignedUrlService.createPresignedUrl(anyString()))
+                .thenAnswer(invocation -> invocation.getArgument(0, String.class)
+                        .replace("products/", "https://image.test/"));
     }
 
     @Test
@@ -323,7 +335,7 @@ class WishFacadeTest {
         productImageRepository.saveAndFlush(
                 ProductImage.create(
                         product,
-                        "https://image.test/" + title + ".png",
+                        "products/" + title + ".png",
                         0
                 )
         );
