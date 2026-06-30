@@ -17,7 +17,10 @@ import java.time.LocalDateTime;
         uniqueConstraints = @UniqueConstraint(
                 name = "uq_chat_member",
                 columnNames = {"chat_room_id", "member_id"}
-        )
+        ),
+        indexes = {
+                @Index(name = "idx_chat_members_member_id_chat_room_id", columnList = "member_id, chat_room_id")
+        }
 )
 @EntityListeners(AuditingEntityListener.class) //modifiedAt 콜럼은 필요가없기때문에 사용
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

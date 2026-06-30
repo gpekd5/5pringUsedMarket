@@ -25,7 +25,7 @@ spring:
       on-profile: local
 
   datasource:
-    url: ${DB_URL:jdbc:mysql://localhost:3307/fivespring_used_market}?rewriteBatchedStatements=true
+    url: ${DB_URL:jdbc:mysql://localhost:3307/fivespring_used_market}
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:12345678}
     driver-class-name: com.mysql.cj.jdbc.Driver

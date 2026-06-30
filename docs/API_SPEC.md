@@ -341,6 +341,63 @@ COMPLETED
 
 ---
 
+# 2-A. 이미지 업로드 API
+
+## 2-A-1. 상품 이미지 업로드
+
+- Method: `POST`
+- Path: `/api/images`
+- Auth: 필요
+- Content-Type: `multipart/form-data`
+
+### Request
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| file | MultipartFile | Y | jpg/jpeg/png/webp 이미지 파일 |
+
+### Validation
+
+| 항목 | 규칙 |
+|---|---|
+| empty | 빈 파일 거부 |
+| MIME type | image/jpeg, image/png, image/webp 허용 |
+| extension | jpg, jpeg, png, webp 허용 |
+| size | `AWS_S3_MAX_FILE_SIZE` 이하 |
+
+Spring multipart 파서 제한도 `AWS_S3_MAX_FILE_SIZE`와 같은 값으로 맞춘다.
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "이미지 업로드에 성공했습니다.",
+  "data": {
+    "imageKey": "products/11111111-1111-1111-1111-111111111111.png"
+  }
+}
+```
+
+### 처리 정책
+
+- S3 Bucket은 Private 정책을 유지한다.
+- 업로드 성공 응답은 `imageUrl` 또는 Public S3 URL이 아니라 `imageKey`만 반환한다.
+- 현재 서버가 생성하는 `imageKey` 형식은 `products/{uuid}.{jpg|jpeg|png|webp}`이다.
+- `products` 디렉터리는 `AWS_S3_DIRECTORY` 기본값 기준이며, 현재 상품 API의 imageKey 검증도 이 형식을 기준으로 한다.
+- 상품 조회 응답의 이미지 URL은 서버가 생성한 10분 만료 Presigned URL을 사용한다.
+
+### Error
+
+| Status | Code | 설명 |
+|---|---|---|
+| 400 | EMPTY_IMAGE_FILE | 빈 이미지 파일 |
+| 400 | INVALID_IMAGE_FILE | 지원하지 않는 MIME 타입 또는 확장자 |
+| 400 | IMAGE_FILE_SIZE_EXCEEDED | 이미지 파일 크기 제한 초과 |
+| 500 | IMAGE_UPLOAD_FAILED | S3 업로드 실패 |
+
+---
+
 # 2. 상품 API
 
 ## 2-1. 상품 등록
@@ -348,6 +405,14 @@ COMPLETED
 - Method: `POST`
 - Path: `/api/products`
 - Auth: 필요
+
+### 처리 정책
+
+- 상품 이미지는 `/api/images`로 먼저 업로드한다.
+- 업로드 응답의 `imageKey` 목록을 `imageKeys`로 전달한다.
+- 서버는 `products/{uuid}.{jpg|jpeg|png|webp}` 형식의 `imageKey`만 `product_images.image_key`에 저장한다.
+- `imageKeys` 항목이 `null`, blank, URL 문자열, `products/` 외 prefix, UUID 파일명 규칙이 아닌 값이면 거부한다.
+- 응답의 `imageUrls`는 저장된 `imageKey`를 10분 만료 Presigned URL로 변환한 값이다.
 
 ### Request
 
@@ -357,9 +422,9 @@ COMPLETED
   "price": 2500000,
   "description": "2023년 구매, 상태 매우 좋음",
   "category": "DIGITAL",
-  "images": [
-    "https://cdn.example.com/images/product1.jpg",
-    "https://cdn.example.com/images/product2.jpg"
+  "imageKeys": [
+    "products/11111111-1111-1111-1111-111111111111.jpg",
+    "products/22222222-2222-2222-2222-222222222222.webp"
   ]
 }
 ```
@@ -369,19 +434,21 @@ COMPLETED
 ```json
 {
   "success": true,
-  "message": "상품 등록에 성공했습니다.",
+  "message": "상품이 등록되었습니다.",
   "data": {
     "productId": 1,
     "sellerId": 42,
+    "sellerNickname": "판매자A",
     "title": "MacBook Pro 14인치",
     "price": 2500000,
     "description": "2023년 구매, 상태 매우 좋음",
     "category": "DIGITAL",
     "status": "ON_SALE",
     "imageUrls": [
-      "https://cdn.example.com/images/product1.jpg",
-      "https://cdn.example.com/images/product2.jpg"
+      "https://bucket-name.s3.ap-northeast-2.amazonaws.com/products/11111111-1111-1111-1111-111111111111.jpg?X-Amz-Signature=...",
+      "https://bucket-name.s3.ap-northeast-2.amazonaws.com/products/22222222-2222-2222-2222-222222222222.webp?X-Amz-Signature=..."
     ],
+    "wished": false,
     "createdAt": "2026-06-22T10:00:00",
     "updatedAt": "2026-06-22T10:00:00"
   }
@@ -394,6 +461,7 @@ COMPLETED
 |---|---|---|
 | 400 | INVALID_CATEGORY | 유효하지 않은 카테고리 |
 | 400 | INVALID_PRICE | 가격은 0 이상이어야 함 |
+| 400 | INVALID_IMAGE_KEY | 허용되지 않는 imageKey |
 | 401 | UNAUTHORIZED | 인증되지 않은 사용자 |
 
 ---
@@ -421,7 +489,7 @@ COMPLETED
 ```json
 {
   "success": true,
-  "message": "상품 목록 조회에 성공했습니다.",
+  "message": "요청이 성공했습니다.",
   "data": {
     "content": [
       {
@@ -431,7 +499,7 @@ COMPLETED
         "price": 2500000,
         "category": "DIGITAL",
         "status": "ON_SALE",
-        "thumbnailUrl": "https://cdn.example.com/images/product1.jpg",
+        "thumbnailUrl": "https://bucket-name.s3.ap-northeast-2.amazonaws.com/products/11111111-1111-1111-1111-111111111111.jpg?X-Amz-Signature=...",
         "createdAt": "2026-06-22T10:00:00"
       }
     ],
@@ -443,6 +511,13 @@ COMPLETED
 }
 ```
 
+### 처리 정책
+
+- `thumbnailUrl`은 DB에 저장된 `imageKey`를 10분 만료 Presigned URL로 변환한 값이다.
+- 대표 이미지가 없으면 `thumbnailUrl`은 `null`이다.
+- `status`가 생략되면 `ON_SALE` 상품을 조회한다.
+- `DELETED` 상태는 공개 목록에서 조회할 수 없다.
+
 ---
 
 ## 2-3. 상품 상세 조회
@@ -453,34 +528,39 @@ COMPLETED
 
 ### 설명
 
-로그인 사용자의 경우 관심상품 등록 여부를 `wished`로 함께 반환한다.  
-비로그인 사용자는 `wished = false`로 반환한다.
+현재 구현은 인증 여부와 관계없이 `wished = false`로 반환한다.
 
 ### Response
 
 ```json
 {
   "success": true,
-  "message": "상품 상세 조회에 성공했습니다.",
+  "message": "요청이 성공했습니다.",
   "data": {
     "productId": 1,
+    "sellerId": 3,
+    "sellerNickname": "판매자A",
     "title": "아이폰 15 팝니다",
     "price": 800000,
     "description": "상태 좋습니다.",
     "category": "DIGITAL",
     "status": "ON_SALE",
-    "sellerId": 3,
-    "sellerNickname": "판매자A",
     "imageUrls": [
-      "https://image-url.com/1.png",
-      "https://image-url.com/2.png"
+      "https://bucket-name.s3.ap-northeast-2.amazonaws.com/products/11111111-1111-1111-1111-111111111111.png?X-Amz-Signature=...",
+      "https://bucket-name.s3.ap-northeast-2.amazonaws.com/products/22222222-2222-2222-2222-222222222222.png?X-Amz-Signature=..."
     ],
-    "wished": true,
+    "wished": false,
     "createdAt": "2026-06-23T10:00:00",
     "updatedAt": "2026-06-23T10:00:00"
   }
 }
 ```
+
+### 처리 정책
+
+- `imageUrls`는 DB에 저장된 `imageKey` 목록을 10분 만료 Presigned URL로 변환한 값이다.
+- DB에 저장된 `imageKey` 원문은 상세 조회 응답에 노출하지 않는다.
+- 현재 구현의 `wished` 값은 `false`로 반환된다.
 
 ### Error
 
@@ -504,9 +584,42 @@ COMPLETED
   "price": 2300000,
   "description": "가격 인하합니다",
   "category": "DIGITAL",
-  "images": [
-    "https://cdn.example.com/images/new1.jpg"
+  "imageKeys": [
+    "products/33333333-3333-3333-3333-333333333333.jpg"
   ]
+}
+```
+
+### 처리 정책
+
+- 전달된 필드만 수정하며 `null` 필드는 기존 값을 유지한다.
+- `imageKeys`가 `null`이거나 필드가 없으면 기존 이미지 목록을 유지한다.
+- `imageKeys`가 빈 배열이면 기존 이미지를 모두 삭제한다.
+- `imageKeys`에 값이 있으면 기존 이미지 목록을 삭제하고 요청 순서대로 새 `imageKey` 목록을 저장한다.
+- 수정 응답의 `imageUrls`는 저장된 `imageKey`를 10분 만료 Presigned URL로 변환한 값이다.
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "상품이 수정되었습니다.",
+  "data": {
+    "productId": 1,
+    "sellerId": 42,
+    "sellerNickname": "판매자A",
+    "title": "MacBook Pro 14인치 (수정)",
+    "price": 2300000,
+    "description": "가격 인하합니다",
+    "category": "DIGITAL",
+    "status": "ON_SALE",
+    "imageUrls": [
+      "https://bucket-name.s3.ap-northeast-2.amazonaws.com/products/33333333-3333-3333-3333-333333333333.jpg?X-Amz-Signature=..."
+    ],
+    "wished": false,
+    "createdAt": "2026-06-22T10:00:00",
+    "updatedAt": "2026-06-23T11:30:00"
+  }
 }
 ```
 
@@ -515,6 +628,7 @@ COMPLETED
 | Status | Code | 설명 |
 |---|---|---|
 | 400 | INVALID_CATEGORY | 유효하지 않은 카테고리 |
+| 400 | INVALID_IMAGE_KEY | 허용되지 않는 imageKey |
 | 400 | CANNOT_MODIFY_SOLD_PRODUCT | SOLD 상태 상품 수정 불가 |
 | 401 | UNAUTHORIZED | 인증되지 않은 사용자 |
 | 403 | FORBIDDEN | 본인 상품이 아님 |
@@ -729,7 +843,7 @@ COMPLETED
 # 4. 검색 / 인기검색어 API
 
 ## 검색 정책 요약
-* 상품 검색 API는 로그인/비로그인*사용자 모두 사용할 수 있다.
+* 상품 검색 API는 로그인/비로그인 사용자 모두 사용할 수 있다.
 * 비로그인 사용자는 상품 검색 결과만 조회할 수 있다.
 * 로그인 사용자가 `keyword`로 검색한 경우에만 검색어를 기록한다.
 * 검색어 기록은 두 가지 목적으로 나누어 관리한다.
@@ -761,6 +875,7 @@ Redis ZSet
 |---|---|---|------------------------------------------|
 | keyword | String | N | 검색 키워드                                   |
 | category | String | N | 상품 카테고리                                  |
+| status | String | N | 판매 상태 필터, 기본값 ON_SALE |
 | sort | String | N | latest / oldest / price_asc / price_desc |
 | page | Integer | N | 기본값 0                                    |
 | size | Integer | N | 기본값 10                                   |
@@ -777,6 +892,8 @@ Redis ZSet
 * 검색어 기록 저장 시 앞뒤 공백은 제거한다.
 * 로그인 사용자의 검색어는 `search_logs`에 저장한다.
 * 로그인 사용자의 검색어는 Redis ZSet에도 반영하여 인기검색어 집계에 사용한다.
+* 검색 Repository는 대표 이미지의 `imageKey`를 조회하고, Service에서 `thumbnailUrl`을 10분 만료 Presigned URL로 변환해 반환한다.
+* 대표 이미지가 없으면 `thumbnailUrl`은 `null`이다.
 
 ### 검색어 기록 처리
 
@@ -797,6 +914,33 @@ Redis ZSet
 → Redis 인기검색어 집계 안 함
 ```
 
+### Response
+
+```json
+{
+  "success": true,
+  "message": "요청이 성공했습니다.",
+  "data": {
+    "content": [
+      {
+        "productId": 1,
+        "sellerId": 42,
+        "title": "MacBook Pro 14인치",
+        "price": 2500000,
+        "category": "DIGITAL",
+        "status": "ON_SALE",
+        "thumbnailUrl": "https://bucket-name.s3.ap-northeast-2.amazonaws.com/products/11111111-1111-1111-1111-111111111111.jpg?X-Amz-Signature=...",
+        "createdAt": "2026-06-22T10:00:00"
+      }
+    ],
+    "page": 0,
+    "size": 10,
+    "totalElements": 1,
+    "totalPages": 1
+  }
+}
+```
+
 ---
 
 ## 4-2. 상품 검색 v2
@@ -815,10 +959,96 @@ Redis ZSet
 * 검색어 기록 저장 정책은 v1과 동일하다.
 * 로그인 사용자가 `keyword`로 검색한 경우에만 `search_logs` 저장 및 Redis 인기검색어 집계를 수행한다.
 * 비로그인 검색은 검색어 기록과 인기검색어 집계에 반영하지 않는다.
+* 응답 구조는 v1과 동일하며, `thumbnailUrl`은 10분 만료 Presigned URL이다.
+
+---
+## 4-3. 상품 검색 v3
+
+* Method: `GET`
+* Path: `/api/v3/products/search`
+* Auth: 선택
+* Cache: Redis Remote Cache
+
+### Query Parameters
+
+| 필드       | 타입      | 필수 | 설명                                       |
+| -------- | ------- | -- | ---------------------------------------- |
+| keyword  | String  | N  | 검색 키워드                                   |
+| category | String  | N  | 상품 카테고리                                  |
+| status   | String  | N  | 판매 상태 필터, 기본값 ON_SALE                    |
+| sort     | String  | N  | latest / oldest / price_asc / price_desc |
+| page     | Integer | N  | 기본값 0                                    |
+| size     | Integer | N  | 기본값 10                                   |
+
+### 처리 정책
+
+* v1, v2와 동일한 검색 결과를 반환한다.
+* 동일한 검색 조건의 반복 요청은 Redis Cache에서 응답할 수 있다.
+* Redis Cache는 애플리케이션 외부의 원격 캐시 저장소로 사용한다.
+* Scale-out 환경에서 여러 애플리케이션 서버가 동일한 검색 결과 캐시를 공유할 수 있다.
+* 캐시 전략은 Cache-aside 방식을 사용한다.
+* Cache Hit 시 Redis에 저장된 검색 결과를 반환한다.
+* Cache Miss 시 DB를 조회하고, 조회 결과를 Redis에 저장한 뒤 응답한다.
+* 검색 결과 캐시는 Redis String 자료구조를 사용한다.
+* 캐시 Key는 keyword, category, status, sort, page, size를 포함해야 한다.
+* 캐시 TTL은 5분을 기준으로 한다.
+* 상품 수정/삭제/상태 변경 시 Redis 검색 결과 캐시 무효화 전략을 고려한다.
+* 검색어 기록 저장 정책은 v1, v2와 동일하다.
+* 로그인 사용자가 `keyword`로 검색한 경우에만 `search_logs` 저장 및 Redis 인기검색어 집계를 수행한다.
+* 비로그인 검색은 검색어 기록과 인기검색어 집계에 반영하지 않는다.
+* 검색어 기록 저장과 인기검색어 집계는 캐시 Hit 여부와 관계없이 수행되어야 한다.
+* 따라서 검색어 기록 저장 로직은 `@Cacheable`이 적용된 검색 결과 조회 메서드 내부에 두지 않는다.
+
+### Redis Cache 처리 흐름
+
+```text
+상품 검색 v3 요청
+→ 검색 조건 파싱
+→ 로그인 사용자 + keyword 존재 시 search_logs 저장
+→ 로그인 사용자 + keyword 존재 시 Redis ZSet 인기검색어 score 증가
+→ Redis Cache 조회
+→ Cache Hit: Redis 검색 결과 반환
+→ Cache Miss: DB 조회
+→ DB 조회 결과를 Redis String value로 저장
+→ 검색 결과 응답
+```
+
+### Redis Cache Key 예시
+
+```text
+productSearch::keyword=맥북:category=DIGITAL:status=ON_SALE:sort=latest:page=0:size=10
+```
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "요청이 성공했습니다.",
+  "data": {
+    "content": [
+      {
+        "productId": 1,
+        "sellerId": 42,
+        "title": "MacBook Pro 14인치",
+        "price": 2500000,
+        "category": "DIGITAL",
+        "status": "ON_SALE",
+        "thumbnailUrl": "https://cdn.example.com/images/product1.jpg",
+        "createdAt": "2026-06-22T10:00:00"
+      }
+    ],
+    "page": 0,
+    "size": 10,
+    "totalElements": 1,
+    "totalPages": 1
+  }
+}
+```
 
 ---
 
-## 4-3. 인기검색어 Top N 조회
+## 4-4. 인기검색어 Top N 조회
 
 - Method: `GET`
 - Path: `/api/search/popular`
@@ -844,7 +1074,7 @@ Redis ZSet
 
 ---
 
-## 4-4. 최근 검색어 조회
+## 4-5. 최근 검색어 조회
 
 - Method: `GET`
 - Path: `/api/search/recent`
@@ -888,7 +1118,7 @@ Redis ZSet
 
 ---
 
-## 4-5. 최근 검색어 삭제
+## 4-6. 최근 검색어 삭제
 
 * Method: `DELETE`
 * Path: `/api/search/recent/{searchLogId}`
@@ -924,6 +1154,16 @@ Redis ZSet
 
 # 5. 관심상품 API
 
+## 관심상품 정책
+
+### 공통 정책
+
+- 관심상품 기능은 로그인 사용자만 사용할 수 있다.
+- 비로그인 사용자는 관심상품 등록, 취소, 목록 조회를 할 수 없다.
+- 관심상품은 `member_id + product_id` 조합으로 관리한다.
+- 같은 회원은 같은 상품을 중복으로 관심 등록할 수 없다.
+- DB 레벨에서도 `member_id + product_id` Unique 제약을 둔다.
+
 ## 5-1. 관심상품 등록
 
 - Method: `POST`
@@ -932,8 +1172,11 @@ Redis ZSet
 
 ### 처리 정책
 
-- `member_id + product_id` 조합은 중복 저장될 수 없다.
-- DB Unique 제약 권장: `UNIQUE(member_id, product_id)`
+- 존재하지 않는 상품은 관심 등록할 수 없다.
+- `DELETED` 상태의 상품은 관심 등록할 수 없다.
+- 본인이 등록한 상품은 관심 등록할 수 없다.
+- `ON_SALE`, `RESERVED`, `SOLD` 상태의 상품은 관심 등록할 수 있다.
+- 이미 관심 등록한 상품을 다시 등록하려고 하면 예외를 반환한다.
 
 ### Response
 
@@ -956,6 +1199,11 @@ Redis ZSet
 - Path: `/api/products/{productId}/wishes`
 - Auth: 필요
 
+### 처리 정책
+- 본인이 관심 등록한 상품만 취소할 수 있다.
+- 관심 등록하지 않은 상품을 취소하려고 하면 예외를 반환한다.
+- 존재하지 않는 상품에 대한 취소 요청은 예외를 반환한다.
+
 ### Response
 
 ```json
@@ -976,6 +1224,70 @@ Redis ZSet
 - Method: `GET`
 - Path: `/api/members/me/wishes`
 - Auth: 필요
+
+### Query Parameters
+
+없음
+
+### 처리 정책
+
+- 로그인 사용자의 관심상품 목록만 조회한다.
+- 인증 Principal의 `memberId`를 기준으로 조회한다.
+- Request Body나 Query Parameter로 `memberId`를 받지 않는다.
+- 다른 사용자의 관심상품 목록은 조회할 수 없다.
+- 최신 관심 등록순으로 조회한다.
+- `DELETED` 상태의 상품은 목록에서 제외한다.
+- `SOLD` 상태의 상품은 목록에 포함한다.
+- 관심상품이 없으면 빈 배열을 반환한다.
+- 응답에는 관심 등록 시각인 `wishedAt`을 포함한다.
+- 목록 조회 결과는 전부 관심 등록된 상품이므로 별도의 `wished` 값은 반환하지 않는다.
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "관심상품 목록 조회에 성공했습니다.",
+  "data": [
+    {
+      "productId": 1,
+      "title": "아이폰 15 팝니다",
+      "price": 800000,
+      "category": "DIGITAL",
+      "status": "ON_SALE",
+      "thumbnailUrl": "https://image-url.com/1.png",
+      "wishedAt": "2026-06-26T15:30:00"
+    },
+    {
+      "productId": 2,
+      "title": "맥북 팝니다",
+      "price": 1200000,
+      "category": "DIGITAL",
+      "status": "SOLD",
+      "thumbnailUrl": "https://image-url.com/2.png",
+      "wishedAt": "2026-06-25T10:12:00"
+    }
+  ]
+}
+```
+
+### Empty Response
+
+```json
+{
+  "success": true,
+  "message": "관심상품 목록 조회에 성공했습니다.",
+  "data": []
+}
+```
+
+### Error
+
+| Status | Code | 설명 |
+|---|---|---|
+| 401 | UNAUTHORIZED | 인증되지 않은 사용자 |
+| 404 | MEMBER_NOT_FOUND | 회원을 찾을 수 없음 |
+```
 
 ---
 
