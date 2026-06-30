@@ -66,8 +66,12 @@ public class ProductController {
     }
 
     @GetMapping("/{productId}")
-    public ResponseEntity<ApiResponse<ProductResponse>> getProduct(@PathVariable Long productId) {
-        ProductResponse response = productService.getProduct(productId);
+    public ResponseEntity<ApiResponse<ProductResponse>> getProduct(
+            @PathVariable Long productId,
+            @AuthenticationPrincipal AuthMember authMember
+    ) {
+        Long memberId = authMember == null ? null : authMember.memberId();
+        ProductResponse response = productService.getProduct(productId, memberId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
