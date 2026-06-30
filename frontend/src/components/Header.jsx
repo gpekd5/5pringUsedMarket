@@ -1,5 +1,8 @@
-import { Heart, Home, MessageCircle, Search, ShieldCheck, ShoppingBag, Ticket, UserRound } from 'lucide-react';
-import { NavLink } from 'react-router-dom';
+import { Heart, Home, LogOut, MessageCircle, Search, ShieldCheck, ShoppingBag, Ticket, UserRound } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { fetchMe, logout } from '../api/authApi.js';
+import { AUTH_CHANGE_EVENT, clearAuthStorage, getAccessToken, getStoredAuthUser } from '../api/authStorage.js';
 import routePaths from '../routes/routePaths.js';
 
 const navItems = [
@@ -19,7 +22,72 @@ function navClassName(isActive) {
   ].join(' ');
 }
 
+function getAuthSnapshot() {
+  const accessToken = getAccessToken();
+
+  return {
+    isAuthenticated: Boolean(accessToken),
+    user: accessToken ? getStoredAuthUser() : null,
+  };
+}
+
 export default function Header() {
+  const navigate = useNavigate();
+  const [auth, setAuth] = useState(getAuthSnapshot);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  useEffect(() => {
+    const syncAuth = () => {
+      setAuth(getAuthSnapshot());
+    };
+
+    window.addEventListener(AUTH_CHANGE_EVENT, syncAuth);
+    window.addEventListener('storage', syncAuth);
+
+    return () => {
+      window.removeEventListener(AUTH_CHANGE_EVENT, syncAuth);
+      window.removeEventListener('storage', syncAuth);
+    };
+  }, []);
+
+  useEffect(() => {
+    let isActive = true;
+
+    if (!auth.isAuthenticated || auth.user) {
+      return () => {
+        isActive = false;
+      };
+    }
+
+    fetchMe()
+      .then((user) => {
+        if (isActive) {
+          setAuth({ isAuthenticated: true, user });
+        }
+      })
+      .catch((error) => {
+        if ([401, 403].includes(error?.response?.status)) {
+          clearAuthStorage();
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [auth.isAuthenticated, auth.user]);
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+
+    try {
+      await logout();
+      setAuth(getAuthSnapshot());
+      navigate(routePaths.home);
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
+
   return (
     <>
       <header className="sticky top-0 z-30 border-b border-[var(--color-border)] bg-white/95 backdrop-blur">
@@ -48,13 +116,30 @@ export default function Header() {
             ))}
           </nav>
 
-          <NavLink
-            to={routePaths.login}
-            className="hidden items-center gap-2 rounded-[22px] bg-[var(--color-primary)] px-5 py-3 text-sm font-black text-[var(--color-on-primary)] shadow-sm transition hover:bg-[var(--color-primary-dark)] sm:flex"
-          >
-            <UserRound size={17} />
-            로그인
-          </NavLink>
+          {auth.isAuthenticated ? (
+            <div className="hidden items-center gap-2 sm:flex">
+              <span className="max-w-[132px] truncate rounded-full border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-black text-[var(--color-text-main)]">
+                {auth.user?.nickname || '회원'}님
+              </span>
+              <button
+                type="button"
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+                className="flex items-center gap-2 rounded-[22px] bg-[var(--color-text-main)] px-4 py-3 text-sm font-black text-white shadow-sm transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <LogOut size={17} />
+                {isLoggingOut ? '처리 중' : '로그아웃'}
+              </button>
+            </div>
+          ) : (
+            <NavLink
+              to={routePaths.login}
+              className="hidden items-center gap-2 rounded-[22px] bg-[var(--color-primary)] px-5 py-3 text-sm font-black text-[var(--color-on-primary)] shadow-sm transition hover:bg-[var(--color-primary-dark)] sm:flex"
+            >
+              <UserRound size={17} />
+              로그인
+            </NavLink>
+          )}
         </div>
       </header>
 
