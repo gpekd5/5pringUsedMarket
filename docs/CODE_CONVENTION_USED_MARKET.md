@@ -872,6 +872,9 @@ EC2 배포
 
 - PR 또는 push 시 build/test를 수행한다.
 - 테스트 실패 시 배포하지 않는다.
+- 운영 배포 기준 브랜치는 `main`이다.
+- `develop` 대상 PR과 `main` 대상 PR은 검증용 build/test만 수행한다.
+- AWS 인증, ECR Push, EC2 배포는 `main` push 또는 merge 시에만 실행한다.
 - main 직접 push를 금지한다.
 
 ### 민감 정보
@@ -890,6 +893,12 @@ EC2 배포
 main      : 배포용
 develop   : 개발 통합용
 feature/* : 기능 개발용
+```
+
+기본 병합 흐름:
+
+```text
+feature/* -> develop PR -> 통합 테스트 -> develop -> main PR -> main merge/push 배포
 ```
 
 예시:

@@ -26,6 +26,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final String ROLE_PREFIX = "ROLE_";
     private static final String POST_METHOD = "POST";
+    private static final String ACTUATOR_HEALTH_PATH = "/actuator/health";
     private static final Set<String> PUBLIC_AUTH_PATHS = Set.of(
             "/api/auth/signup",
             "/api/auth/login",
@@ -51,6 +52,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
+        if (ACTUATOR_HEALTH_PATH.equals(request.getRequestURI())) {
+            return true;
+        }
+
         return POST_METHOD.equals(request.getMethod()) && PUBLIC_AUTH_PATHS.contains(request.getRequestURI());
     }
 

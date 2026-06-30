@@ -2,6 +2,7 @@ package com.example.fivespringusedmarket.search.service;
 
 import com.example.fivespringusedmarket.common.exception.CustomException;
 import com.example.fivespringusedmarket.common.exception.ErrorCode;
+import com.example.fivespringusedmarket.image.service.S3PresignedUrlService;
 import com.example.fivespringusedmarket.member.entity.Member;
 import com.example.fivespringusedmarket.product.dto.ProductListItemResponse;
 import com.example.fivespringusedmarket.product.dto.ProductPageResponse;
@@ -44,7 +45,8 @@ public class SearchService {
     private final SearchLogRepository searchLogRepository;
     private final StringRedisTemplate stringRedisTemplate;
     private final CachedProductSearchReader cachedProductSearchService;
-    private static final String RANKING_POST_KEY = "popular:keywords";
+    private static final String POPULAR_SEARCH_KEY  = "popular:keywords";
+    private final S3PresignedUrlService s3PresignedUrlService;
     private static final int POPULAR_SEARCH_LIMIT = 10;
 
     /**
@@ -66,7 +68,9 @@ public class SearchService {
 
         saveSearchLog(member, normalizedKeyword);
 
-        Page<ProductListItemResponse> products = productSearchRepository.search(condition, pageable);
+        // 검색 Repository는 DB에 저장된 대표 이미지 key를 가져오고, Service에서 응답용 URL로 변환한다.
+        Page<ProductListItemResponse> products = productSearchRepository.search(condition, pageable)
+                .map(this::withPresignedThumbnailUrl);
 
         return ProductPageResponse.of(products);
     }
@@ -92,9 +96,36 @@ public class SearchService {
         saveSearchLog(member, normalizedKeyword);
 
         // 실제 상품 목록 조회만 캐시 적용 Service에 위임합니다.
-        Page<ProductListItemResponse> products = cachedProductSearchService.search(condition, pageable);
+        ProductPageResponse response =
+                cachedProductSearchService.searchWithCaffeine(condition, pageable);
 
-        return ProductPageResponse.of(products);
+        return withPresignedThumbnailUrls(response);
+    }
+
+    /**
+     * Redis 캐시가 적용된 상품 검색 v3 기능입니다.
+     *
+     * <p>검색 로그 저장과 인기검색어 집계는 매 요청마다 수행하고,
+     * 상품 목록 조회 결과만 캐시를 적용합니다.</p>
+     */
+    @Transactional
+    public ProductPageResponse searchProductsV3(Member member, String keyword, String category, String status, String sort, Pageable pageable) {
+        String normalizedKeyword = normalizeKeyword(keyword);
+
+        ProductSearchCondition condition = new ProductSearchCondition(
+                normalizedKeyword,
+                parseCategory(category),
+                parseStatus(status),
+                parseSort(sort)
+        );
+
+        // 검색 행위 기록은 캐시 여부와 상관없이 매번 저장합니다.
+        saveSearchLog(member, normalizedKeyword);
+
+        ProductPageResponse response =
+                cachedProductSearchService.searchWithRedis(condition, pageable);
+
+        return withPresignedThumbnailUrls(response);
     }
 
     /**
@@ -144,7 +175,7 @@ public class SearchService {
      */
     public List<PopularSearchResponse> getPopularSearches() {
         Set<ZSetOperations.TypedTuple<String>> popularKeywords =
-                stringRedisTemplate.opsForZSet().reverseRangeWithScores(RANKING_POST_KEY, 0, POPULAR_SEARCH_LIMIT-1);
+                stringRedisTemplate.opsForZSet().reverseRangeWithScores(POPULAR_SEARCH_KEY, 0, POPULAR_SEARCH_LIMIT-1);
 
         if (popularKeywords == null || popularKeywords.isEmpty()) {
             return List.of();
@@ -191,9 +222,9 @@ public class SearchService {
         }
 
         // 최근 검색어 조회/삭제를 위한 DB 검색 기록 저장
-        searchLogRepository.save(SearchLog.create(member, keyword)); // 앞뒤 공백 제거하기 위해 트림 사용
+        searchLogRepository.save(SearchLog.create(member, keyword));
         // 인기검색어 Top 10 조회를 위한 Redis ZSet score 증가
-        stringRedisTemplate.opsForZSet().incrementScore(RANKING_POST_KEY, keyword, 1);
+        stringRedisTemplate.opsForZSet().incrementScore(POPULAR_SEARCH_KEY, keyword, 1);
     }
 
     /**
@@ -244,5 +275,30 @@ public class SearchService {
         }catch (IllegalArgumentException e) {
             throw new CustomException(ErrorCode.INVALID_SEARCH_SORT_TYPE);
         }
+    }
+
+    /**
+     * 검색 목록 응답 안의 thumbnailUrl(imageKey)을 Presigned URL로 변환한다.
+     */
+    private ProductPageResponse withPresignedThumbnailUrls(ProductPageResponse response) {
+        List<ProductListItemResponse> convertedContent = response.content()
+                .stream()
+                .map(this::withPresignedThumbnailUrl)
+                .toList();
+
+        return new ProductPageResponse(
+                convertedContent,
+                response.page(),
+                response.size(),
+                response.totalElements(),
+                response.totalPages()
+        );
+    }
+
+    /**
+     * 검색 목록의 thumbnailUrl 자리에 들어 있던 imageKey를 Presigned URL로 바꾼다.
+     */
+    private ProductListItemResponse withPresignedThumbnailUrl(ProductListItemResponse product) {
+        return product.withThumbnailUrl(s3PresignedUrlService.createPresignedUrl(product.thumbnailUrl()));
     }
 }

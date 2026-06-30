@@ -2,6 +2,7 @@ package com.example.fivespringusedmarket.product.service;
 
 import com.example.fivespringusedmarket.common.exception.CustomException;
 import com.example.fivespringusedmarket.common.exception.ErrorCode;
+import com.example.fivespringusedmarket.image.service.S3PresignedUrlService;
 import com.example.fivespringusedmarket.member.entity.Member;
 import com.example.fivespringusedmarket.member.repository.MemberRepository;
 import com.example.fivespringusedmarket.product.dto.CreateProductRequest;
@@ -19,9 +20,11 @@ import com.example.fivespringusedmarket.product.repository.ProductRepository;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -34,16 +37,31 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class ProductService {
 
+    private static final Pattern PRODUCT_IMAGE_KEY_PATTERN =
+            Pattern.compile("^products/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\\.(jpg|jpeg|png|webp)$");
+
     private final ProductRepository productRepository;
     private final ProductImageRepository productImageRepository;
     private final MemberRepository memberRepository;
+    private final S3PresignedUrlService s3PresignedUrlService;
 
+    /**
+     * 상품 기본 정보와 업로드가 끝난 이미지 key 목록을 저장한다.
+     *
+     * <p>Controller는 MultipartFile을 받지 않는다. 클라이언트가 먼저 이미지 업로드 API를 호출해
+     * imageKey를 받은 뒤, 그 key 목록을 상품 등록 요청에 담아 보내는 흐름이다.</p>
+     */
     @Transactional
-    @CacheEvict(cacheNames = "productSearch", allEntries = true)
+    @Caching(evict = {
+            @CacheEvict(cacheNames = "productSearchV2", allEntries = true, cacheManager = "caffeineCacheManager"),
+            @CacheEvict(cacheNames = "productSearchV3", allEntries = true, cacheManager = "redisCacheManager")
+    })
     public ProductResponse createProduct(Long memberId, CreateProductRequest request) {
         if (request.price() < 0) {
             throw new CustomException(ErrorCode.INVALID_PRICE);
         }
+
+        validateImageKeys(request.imageKeys());
 
         ProductCategory category = parseCategory(request.category());
         Member seller = memberRepository.findById(memberId)
@@ -53,13 +71,20 @@ public class ProductService {
                 Product.create(seller, request.title(), request.description(), request.price(), category)
         );
 
-        List<ProductImage> images = saveImages(product, request.images());
+        List<ProductImage> images = saveImages(product, request.imageKeys());
 
-        return ProductResponse.of(product, images);
+        // 응답에는 DB에 저장한 key가 아니라, 즉시 조회 가능한 Presigned URL을 담는다.
+        return ProductResponse.of(product, createPresignedUrls(images));
     }
 
+    /**
+     * 상품 정보를 수정하고, imageKeys 필드가 전달된 경우 기존 이미지 목록을 새 key 목록으로 교체한다.
+     */
     @Transactional
-    @CacheEvict(cacheNames = "productSearch", allEntries = true)
+    @Caching(evict = {
+            @CacheEvict(cacheNames = "productSearchV2", allEntries = true, cacheManager = "caffeineCacheManager"),
+            @CacheEvict(cacheNames = "productSearchV3", allEntries = true, cacheManager = "redisCacheManager")
+    })
     public ProductResponse updateProduct(Long memberId, Long productId, UpdateProductRequest request) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new CustomException(ErrorCode.PRODUCT_NOT_FOUND));
@@ -77,15 +102,20 @@ public class ProductService {
         }
 
         ProductCategory category = request.category() != null ? parseCategory(request.category()) : null;
+        validateImageKeys(request.imageKeys());
         product.update(request.title(), request.price(), request.description(), category);
 
-        List<ProductImage> images = replaceImages(product, request.images());
+        List<ProductImage> images = replaceImages(product, request.imageKeys());
 
-        return ProductResponse.of(product, images);
+        // 수정 응답도 상세 조회와 동일하게 Presigned URL 형태로 내려준다.
+        return ProductResponse.of(product, createPresignedUrls(images));
     }
 
     @Transactional
-    @CacheEvict(cacheNames = "productSearch", allEntries = true)
+    @Caching(evict = {
+            @CacheEvict(cacheNames = "productSearchV2", allEntries = true, cacheManager = "caffeineCacheManager"),
+            @CacheEvict(cacheNames = "productSearchV3", allEntries = true, cacheManager = "redisCacheManager")
+    })
     public void deleteProduct(Long memberId, Long productId) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new CustomException(ErrorCode.PRODUCT_NOT_FOUND));
@@ -97,6 +127,11 @@ public class ProductService {
         product.updateStatus(ProductStatus.DELETED);
     }
 
+    /**
+     * 상품 상세 정보를 조회한다.
+     *
+     * <p>DB의 ProductImage에는 imageKey만 있으므로, 응답 직전에 Presigned URL 목록으로 변환한다.</p>
+     */
     @Transactional(readOnly = true)
     public ProductResponse getProduct(Long productId) {
         Product product = productRepository.findById(productId)
@@ -108,9 +143,14 @@ public class ProductService {
 
         List<ProductImage> images = productImageRepository.findByProductIdOrderBySortOrderAsc(productId);
 
-        return ProductResponse.of(product, images);
+        return ProductResponse.of(product, createPresignedUrls(images));
     }
 
+    /**
+     * 로그인한 회원의 판매 상품 목록을 조회한다.
+     *
+     * <p>목록에서는 전체 이미지가 필요하지 않으므로 대표 이미지(sortOrder=0)만 Presigned URL로 변환한다.</p>
+     */
     @Transactional(readOnly = true)
     public ProductPageResponse getMyProducts(Long memberId, String status, Pageable pageable) {
         ProductStatus statusEnum = status != null ? parseStatus(status) : null;
@@ -122,20 +162,28 @@ public class ProductService {
 
         Page<Product> productPage = productRepository.findMyProducts(memberId, statusEnum, ProductStatus.DELETED, pageable);
 
-        // 대표 이미지(sortOrder=1)를 상품 ID 기준으로 한 번에 조회해 N+1을 방지한다.
+        // 대표 이미지(sortOrder=0)를 상품 ID 기준으로 한 번에 조회해 N+1을 방지한다.
         List<Long> productIds = productPage.map(Product::getId).toList();
-        Map<Long, String> imageUrlMap = productImageRepository
+        Map<Long, String> thumbnailUrlMap = productImageRepository
                 .findByProductIdInAndSortOrder(productIds, 0)
                 .stream()
-                .collect(Collectors.toMap(img -> img.getProduct().getId(), ProductImage::getImageUrl));
+                .collect(Collectors.toMap(
+                        img -> img.getProduct().getId(),
+                        img -> s3PresignedUrlService.createPresignedUrl(img.getImageKey())
+                ));
 
         Page<ProductListItemResponse> responsePage = productPage.map(product ->
-                ProductListItemResponse.of(product, imageUrlMap.get(product.getId()))
+                ProductListItemResponse.of(product, thumbnailUrlMap.get(product.getId()))
         );
 
         return ProductPageResponse.of(responsePage);
     }
 
+    /**
+     * 공개 상품 목록을 검색 조건과 함께 조회한다.
+     *
+     * <p>목록 응답의 thumbnailUrl에는 대표 이미지 key를 변환한 Presigned URL이 들어간다.</p>
+     */
     @Transactional(readOnly = true)
     public ProductPageResponse getProducts(String category, String keyword, String status, Long sellerId, Pageable pageable) {
         ProductCategory categoryEnum = category != null ? parseCategory(category) : null;
@@ -148,22 +196,28 @@ public class ProductService {
 
         Page<Product> productPage = productRepository.searchProducts(categoryEnum, keyword, statusEnum, sellerId, ProductStatus.DELETED, pageable);
 
-        // 대표 이미지(sortOrder=1)를 상품 ID 기준으로 한 번에 조회해 N+1을 방지한다.
+        // 대표 이미지(sortOrder=0)를 상품 ID 기준으로 한 번에 조회해 N+1을 방지한다.
         List<Long> productIds = productPage.map(Product::getId).toList();
-        Map<Long, String> imageUrlMap = productImageRepository
+        Map<Long, String> thumbnailUrlMap = productImageRepository
                 .findByProductIdInAndSortOrder(productIds, 0)
                 .stream()
-                .collect(Collectors.toMap(img -> img.getProduct().getId(), ProductImage::getImageUrl));
+                .collect(Collectors.toMap(
+                        img -> img.getProduct().getId(),
+                        img -> s3PresignedUrlService.createPresignedUrl(img.getImageKey())
+                ));
 
         Page<ProductListItemResponse> responsePage = productPage.map(product ->
-                ProductListItemResponse.of(product, imageUrlMap.get(product.getId()))
+                ProductListItemResponse.of(product, thumbnailUrlMap.get(product.getId()))
         );
 
         return ProductPageResponse.of(responsePage);
     }
 
     @Transactional
-    @CacheEvict(cacheNames = "productSearch", allEntries = true)
+    @Caching(evict = {
+            @CacheEvict(cacheNames = "productSearchV2", allEntries = true, cacheManager = "caffeineCacheManager"),
+            @CacheEvict(cacheNames = "productSearchV3", allEntries = true, cacheManager = "redisCacheManager")
+    })
     public void updateProductStatus(Long memberId, Long productId, String status) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new CustomException(ErrorCode.PRODUCT_NOT_FOUND));
@@ -188,7 +242,10 @@ public class ProductService {
     }
 
     @Transactional
-    @CacheEvict(cacheNames = "productSearch", allEntries = true)
+    @Caching(evict = {
+            @CacheEvict(cacheNames = "productSearchV2", allEntries = true, cacheManager = "caffeineCacheManager"),
+            @CacheEvict(cacheNames = "productSearchV3", allEntries = true, cacheManager = "redisCacheManager")
+    })
     public void cancelReservation(Long memberId, Long productId) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new CustomException(ErrorCode.PRODUCT_NOT_FOUND));
@@ -230,27 +287,60 @@ public class ProductService {
         }
     }
 
-    private List<ProductImage> replaceImages(Product product, List<String> imageUrls) {
-        if (imageUrls == null) {
-            // images 필드가 없으면 기존 이미지를 유지한다.
+    /**
+     * 수정 요청에서 imageKeys가 전달되었을 때 기존 이미지를 모두 삭제하고 새 목록을 저장한다.
+     *
+     * <p>{@code null}은 "이미지 변경 없음"으로 해석하고, 빈 배열은 "이미지 전체 삭제"로 해석한다.</p>
+     */
+    private List<ProductImage> replaceImages(Product product, List<String> imageKeys) {
+        if (imageKeys == null) {
+            // imageKeys 필드가 없으면 기존 이미지를 유지한다.
             return productImageRepository.findByProductIdOrderBySortOrderAsc(product.getId());
         }
 
         productImageRepository.deleteByProductId(product.getId());
-        return saveImages(product, imageUrls);
+        return saveImages(product, imageKeys);
     }
 
-    private List<ProductImage> saveImages(Product product, List<String> imageUrls) {
-        if (imageUrls == null || imageUrls.isEmpty()) {
+    /**
+     * 상품 이미지 key 목록을 ProductImage 엔티티로 저장한다.
+     */
+    private List<ProductImage> saveImages(Product product, List<String> imageKeys) {
+        if (imageKeys == null || imageKeys.isEmpty()) {
             return new ArrayList<>();
         }
 
+        validateImageKeys(imageKeys);
+
         // 요청 배열 순서 기준으로 0부터 sortOrder를 부여한다.
         List<ProductImage> images = new ArrayList<>();
-        for (int i = 0; i < imageUrls.size(); i++) {
-            images.add(ProductImage.create(product, imageUrls.get(i), i));
+        for (int i = 0; i < imageKeys.size(); i++) {
+            images.add(ProductImage.create(product, imageKeys.get(i), i));
         }
 
         return productImageRepository.saveAll(images);
+    }
+
+    private void validateImageKeys(List<String> imageKeys) {
+        if (imageKeys == null || imageKeys.isEmpty()) {
+            return;
+        }
+
+        for (String imageKey : imageKeys) {
+            if (imageKey == null || imageKey.isBlank() || imageKey.contains("://")
+                    || !PRODUCT_IMAGE_KEY_PATTERN.matcher(imageKey).matches()) {
+                throw new CustomException(ErrorCode.INVALID_IMAGE_KEY);
+            }
+        }
+    }
+
+    /**
+     * DB에서 조회한 imageKey 목록을 클라이언트 응답용 Presigned URL 목록으로 변환한다.
+     */
+    private List<String> createPresignedUrls(List<ProductImage> images) {
+        return images.stream()
+                .map(ProductImage::getImageKey)
+                .map(s3PresignedUrlService::createPresignedUrl)
+                .toList();
     }
 }

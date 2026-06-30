@@ -73,6 +73,29 @@ public class SearchController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
+    /**
+     * redis 캐시가 적용된 않은 상품 검색 v3 API입니다.
+     *
+     * <p>비로그인 사용자도 검색할 수 있으므로 authMember는 null일 수 있습니다.
+     * 로그인 사용자인 경우에만 memberId를 전달하여 검색어 저장 및 인기검색어 집계를 수행합니다.</p>
+     */
+    @GetMapping("/api/v3/products/search")
+    public ResponseEntity<ApiResponse<ProductPageResponse>> searchProductV3(
+            @AuthenticationPrincipal AuthMember authMember,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String sort,
+            @PageableDefault(size = 10) Pageable pageable
+    ){
+        validateSearchPageSize(pageable);
+
+        Long memberId = authMember == null ? null : authMember.memberId();
+
+        ProductPageResponse response = searchFacade.searchProductsV3(memberId, keyword, category, status, sort, pageable);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
 
     /**
      * 로그인 사용자의 최근 검색어 목록을 조회합니다.
