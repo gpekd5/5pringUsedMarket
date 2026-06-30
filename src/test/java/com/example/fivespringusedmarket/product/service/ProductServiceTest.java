@@ -21,6 +21,7 @@ import com.example.fivespringusedmarket.product.entity.ProductImage;
 import com.example.fivespringusedmarket.product.entity.ProductStatus;
 import com.example.fivespringusedmarket.product.repository.ProductImageRepository;
 import com.example.fivespringusedmarket.product.repository.ProductRepository;
+import com.example.fivespringusedmarket.wish.repository.WishRepository;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -48,6 +49,9 @@ class ProductServiceTest {
     @Mock
     private S3PresignedUrlService s3PresignedUrlService;
 
+    @Mock
+    private WishRepository wishRepository;
+
     private ProductService productService;
     private Member seller;
 
@@ -57,7 +61,8 @@ class ProductServiceTest {
                 productRepository,
                 productImageRepository,
                 memberRepository,
-                s3PresignedUrlService
+                s3PresignedUrlService,
+                wishRepository
         );
 
         seller = Member.create("seller@test.com", "encoded-password", "판매자");
@@ -170,7 +175,7 @@ class ProductServiceTest {
         when(productImageRepository.findByProductIdOrderBySortOrderAsc(10L)).thenReturn(List.of());
 
         // when
-        ProductResponse response = productService.getProduct(10L);
+        ProductResponse response = productService.getProduct(10L, null);
 
         // then
         assertThat(response.imageUrls()).isEmpty();
@@ -188,7 +193,7 @@ class ProductServiceTest {
                 .thenReturn("https://presigned.test/detail");
 
         // when
-        ProductResponse response = productService.getProduct(10L);
+        ProductResponse response = productService.getProduct(10L, null);
 
         // then
         assertThat(response.imageUrls()).containsExactly("https://presigned.test/detail");
