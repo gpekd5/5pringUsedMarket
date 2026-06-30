@@ -1,6 +1,6 @@
 import { Heart, Home, LogOut, MessageCircle, Plus, Search, ShieldCheck, ShoppingBag, Ticket, UserRound } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { Link, NavLink } from 'react-router-dom';
 import { fetchMe, logout } from '../api/authApi.js';
 import { AUTH_CHANGE_EVENT, clearAuthStorage, getAccessToken, getStoredAuthUser } from '../api/authStorage.js';
 import routePaths from '../routes/routePaths.js';
@@ -32,7 +32,6 @@ function getAuthSnapshot() {
 }
 
 export default function Header() {
-  const navigate = useNavigate();
   const [auth, setAuth] = useState(getAuthSnapshot);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
@@ -82,7 +81,7 @@ export default function Header() {
     try {
       await logout();
       setAuth(getAuthSnapshot());
-      navigate(routePaths.home);
+      window.location.assign(routePaths.home);
     } finally {
       setIsLoggingOut(false);
     }
@@ -125,9 +124,12 @@ export default function Header() {
                 <Plus size={17} />
                 상품 등록
               </NavLink>
-              <span className="max-w-[132px] truncate rounded-full border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-black text-[var(--color-text-main)]">
+              <Link
+                to={routePaths.myPage}
+                className="max-w-[132px] truncate rounded-full border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-black text-[var(--color-text-main)] transition hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+              >
                 {auth.user?.nickname || '회원'}님
-              </span>
+              </Link>
               <button
                 type="button"
                 onClick={handleLogout}

@@ -100,6 +100,40 @@ export async function updateProduct(productId, { title, price, description, cate
   return unwrapApiResponse(response);
 }
 
+export async function deleteProduct(productId) {
+  const response = await apiClient.delete(`/api/products/${productId}`);
+
+  return unwrapApiResponse(response);
+}
+
+export async function updateProductStatus(productId, status) {
+  const response = await apiClient.patch(`/api/products/${productId}/status`, {
+    status,
+  });
+
+  return unwrapApiResponse(response);
+}
+
+export async function cancelProductReservation(productId) {
+  const response = await apiClient.patch(`/api/products/${productId}/status/cancel-reservation`);
+
+  return unwrapApiResponse(response);
+}
+
+export async function getMyProducts({ status, page = 0, size = 20 } = {}) {
+  const response = await apiClient.get('/api/products/me', {
+    params: cleanParams({ status, page, size }),
+  });
+
+  return normalizeProductPage(unwrapApiResponse(response));
+}
+
+export async function getMemberProfile(memberId) {
+  const response = await apiClient.get(`/api/members/${memberId}/profile`);
+
+  return unwrapApiResponse(response);
+}
+
 export async function getPopularSearches() {
   const response = await apiClient.get('/api/search/popular');
   const popularSearches = unwrapApiResponse(response);

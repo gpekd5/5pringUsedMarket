@@ -10,14 +10,18 @@ import {
   Ticket,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { getAccessToken } from '../api/authStorage.js';
 import {
   getPopularSearches,
   getProductApiErrorMessage,
   searchProducts,
 } from '../api/productApi.js';
+import { addWish, getMyWishes, getWishApiErrorMessage, removeWish } from '../api/wishApi.js';
 import EmptyState from '../components/EmptyState.jsx';
 import PageHeader from '../components/PageHeader.jsx';
 import ProductCard from '../components/ProductCard.jsx';
+import routePaths from '../routes/routePaths.js';
 
 const PAGE_SIZE = 12;
 
@@ -43,6 +47,7 @@ function getCategoryLabel(categoryValue) {
 }
 
 export default function HomePage() {
+  const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [pageInfo, setPageInfo] = useState({
     page: 0,
@@ -56,6 +61,7 @@ export default function HomePage() {
   const [popularSearches, setPopularSearches] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [wishUpdatingProductId, setWishUpdatingProductId] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
 
   const hasFilter = Boolean(submittedKeyword || selectedCategory);
@@ -69,6 +75,24 @@ export default function HomePage() {
       })),
     [pageInfo.totalElements],
   );
+
+  const mergeWishState = async (nextProducts) => {
+    if (!getAccessToken() || nextProducts.length === 0) {
+      return nextProducts;
+    }
+
+    try {
+      const wishes = await getMyWishes();
+      const wishedProductIds = new Set(wishes.map((wish) => String(wish.productId)));
+
+      return nextProducts.map((product) => ({
+        ...product,
+        wished: wishedProductIds.has(String(product.productId)),
+      }));
+    } catch {
+      return nextProducts;
+    }
+  };
 
   const loadProducts = async ({
     page = 0,
@@ -95,7 +119,9 @@ export default function HomePage() {
         sort: 'LATEST',
       });
 
-      setProducts((prevProducts) => (append ? [...prevProducts, ...nextPage.content] : nextPage.content));
+      const nextProducts = await mergeWishState(nextPage.content);
+
+      setProducts((prevProducts) => (append ? [...prevProducts, ...nextProducts] : nextProducts));
       setPageInfo(nextPage);
     } catch (error) {
       setErrorMessage(getProductApiErrorMessage(error));
@@ -168,6 +194,52 @@ export default function HomePage() {
   const handleRefresh = () => {
     loadProducts({ page: 0, keyword: submittedKeyword, category: selectedCategory });
     loadPopularSearches();
+  };
+
+  const handleWishToggle = async (product) => {
+    if (!getAccessToken()) {
+      navigate(routePaths.login, {
+        state: { message: '관심상품은 로그인 후 이용할 수 있습니다.' },
+      });
+      return;
+    }
+
+    setWishUpdatingProductId(product.productId);
+    setErrorMessage('');
+
+    try {
+      const wishStatus = product.wished
+        ? await removeWish(product.productId)
+        : await addWish(product.productId);
+
+      setProducts((prevProducts) =>
+        prevProducts.map((prevProduct) =>
+          prevProduct.productId === product.productId
+            ? { ...prevProduct, wished: wishStatus.wished }
+            : prevProduct,
+        ),
+      );
+    } catch (error) {
+      const errorCode = error?.response?.data?.code;
+
+      if (errorCode === 'WISH_ALREADY_EXISTS') {
+        setProducts((prevProducts) =>
+          prevProducts.map((prevProduct) =>
+            prevProduct.productId === product.productId ? { ...prevProduct, wished: true } : prevProduct,
+          ),
+        );
+      } else if (errorCode === 'WISH_NOT_FOUND') {
+        setProducts((prevProducts) =>
+          prevProducts.map((prevProduct) =>
+            prevProduct.productId === product.productId ? { ...prevProduct, wished: false } : prevProduct,
+          ),
+        );
+      } else {
+        setErrorMessage(getWishApiErrorMessage(error));
+      }
+    } finally {
+      setWishUpdatingProductId(null);
+    }
   };
 
   const pageTitle = submittedKeyword ? `"${submittedKeyword}" 검색 결과` : '오늘 올라온 추천 상품';
@@ -307,7 +379,12 @@ export default function HomePage() {
         <>
           <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {products.map((product) => (
-              <ProductCard key={product.productId} product={product} />
+              <ProductCard
+                key={product.productId}
+                product={product}
+                onWishClick={handleWishToggle}
+                isWishLoading={wishUpdatingProductId === product.productId}
+              />
             ))}
           </section>
 

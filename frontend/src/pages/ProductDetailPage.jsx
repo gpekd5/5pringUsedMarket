@@ -1,9 +1,10 @@
 import { AlertCircle, Heart, ImageIcon, Loader2, MessageCircle, Pencil, ShieldCheck } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { fetchMe } from '../api/authApi.js';
 import { getAccessToken, getStoredAuthUser } from '../api/authStorage.js';
-import { getProduct, getProductApiErrorMessage } from '../api/productApi.js';
+import { createTradeChatRoom, getChatApiErrorMessage } from '../api/chatApi.js';
+import { getMemberProfile, getProduct, getProductApiErrorMessage } from '../api/productApi.js';
 import { addWish, getMyWishes, getWishApiErrorMessage, removeWish } from '../api/wishApi.js';
 import StatusBadge from '../components/StatusBadge.jsx';
 import routePaths from '../routes/routePaths.js';
@@ -49,12 +50,16 @@ function formatDateTime(value) {
 
 export default function ProductDetailPage() {
   const { productId } = useParams();
+  const navigate = useNavigate();
   const [product, setProduct] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isWishLoading, setIsWishLoading] = useState(false);
+  const [isChatStarting, setIsChatStarting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [wishMessage, setWishMessage] = useState('');
+  const [chatMessage, setChatMessage] = useState('');
   const [currentUser, setCurrentUser] = useState(getStoredAuthUser);
+  const [sellerProfile, setSellerProfile] = useState(null);
 
   useEffect(() => {
     let isActive = true;
@@ -89,6 +94,18 @@ export default function ProductDetailPage() {
           setCurrentUser(authUser);
           setProduct({ ...productData, wished });
         }
+
+        getMemberProfile(productData.sellerId)
+          .then((profile) => {
+            if (isActive) {
+              setSellerProfile(profile);
+            }
+          })
+          .catch(() => {
+            if (isActive) {
+              setSellerProfile(null);
+            }
+          });
       } catch (error) {
         if (isActive) {
           setErrorMessage(getProductApiErrorMessage(error, '상품 상세 정보를 불러오지 못했습니다.'));
@@ -168,6 +185,33 @@ export default function ProductDetailPage() {
     }
   };
 
+  const handleStartChat = async () => {
+    setChatMessage('');
+
+    if (!getAccessToken()) {
+      navigate(routePaths.login, {
+        state: { message: '채팅은 로그인 후 이용할 수 있습니다.' },
+      });
+      return;
+    }
+
+    if (isOwner) {
+      setChatMessage('내가 등록한 상품에는 채팅을 시작할 수 없습니다.');
+      return;
+    }
+
+    setIsChatStarting(true);
+
+    try {
+      const chatRoom = await createTradeChatRoom(product.productId);
+      navigate(routePaths.chatRoom(chatRoom.roomId));
+    } catch (error) {
+      setChatMessage(getChatApiErrorMessage(error, '채팅방을 열지 못했습니다.'));
+    } finally {
+      setIsChatStarting(false);
+    }
+  };
+
   return (
     <div className="grid gap-6 md:grid-cols-[0.9fr_1.1fr]">
       <section className="theme-card overflow-hidden rounded-[32px]">
@@ -209,7 +253,9 @@ export default function ProductDetailPage() {
             </div>
             <div>
               <p className="font-black">{product.sellerNickname || '판매자'}</p>
-              <p className="text-sm text-[var(--color-text-sub)]">5pring Market 판매자</p>
+              <p className="text-sm text-[var(--color-text-sub)]">
+                판매 상품 {(sellerProfile?.productCount ?? 0).toLocaleString()}개
+              </p>
             </div>
             <ShieldCheck className="ml-auto text-[var(--color-primary)]" />
           </div>
@@ -218,6 +264,12 @@ export default function ProductDetailPage() {
         {wishMessage && (
           <div className="mt-4 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-700">
             {wishMessage}
+          </div>
+        )}
+
+        {chatMessage && (
+          <div className="mt-4 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-700">
+            {chatMessage}
           </div>
         )}
 
@@ -243,13 +295,15 @@ export default function ProductDetailPage() {
             <Heart size={19} className={isWished ? 'fill-current' : ''} />
             {isWishLoading ? '처리 중' : isWished ? '찜 해제' : '찜하기'}
           </button>
-          <Link
-            to={routePaths.chats}
+          <button
+            type="button"
+            onClick={handleStartChat}
+            disabled={isChatStarting}
             className="theme-primary-button flex items-center justify-center gap-2 rounded-2xl px-4 py-3 font-black transition"
           >
-            <MessageCircle size={19} />
-            채팅하기
-          </Link>
+            {isChatStarting ? <Loader2 size={19} className="animate-spin" /> : <MessageCircle size={19} />}
+            {isChatStarting ? '연결 중' : '채팅하기'}
+          </button>
         </div>
       </section>
     </div>
