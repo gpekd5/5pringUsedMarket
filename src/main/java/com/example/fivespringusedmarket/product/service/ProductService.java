@@ -17,6 +17,7 @@ import com.example.fivespringusedmarket.product.entity.ProductImage;
 import com.example.fivespringusedmarket.product.entity.ProductStatus;
 import com.example.fivespringusedmarket.product.repository.ProductImageRepository;
 import com.example.fivespringusedmarket.product.repository.ProductRepository;
+import com.example.fivespringusedmarket.wish.repository.WishRepository;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -44,6 +45,7 @@ public class ProductService {
     private final ProductImageRepository productImageRepository;
     private final MemberRepository memberRepository;
     private final S3PresignedUrlService s3PresignedUrlService;
+    private final WishRepository wishRepository;
 
     /**
      * 상품 기본 정보와 업로드가 끝난 이미지 key 목록을 저장한다.
@@ -133,7 +135,7 @@ public class ProductService {
      * <p>DB의 ProductImage에는 imageKey만 있으므로, 응답 직전에 Presigned URL 목록으로 변환한다.</p>
      */
     @Transactional(readOnly = true)
-    public ProductResponse getProduct(Long productId) {
+    public ProductResponse getProduct(Long productId, Long memberId) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new CustomException(ErrorCode.PRODUCT_NOT_FOUND));
 
@@ -142,8 +144,9 @@ public class ProductService {
         }
 
         List<ProductImage> images = productImageRepository.findByProductIdOrderBySortOrderAsc(productId);
+        boolean wished = memberId != null && wishRepository.existsByMemberIdAndProductId(memberId, productId);
 
-        return ProductResponse.of(product, createPresignedUrls(images));
+        return ProductResponse.of(product, createPresignedUrls(images), wished);
     }
 
     /**
