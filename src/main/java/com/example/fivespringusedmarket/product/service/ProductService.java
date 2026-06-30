@@ -68,6 +68,10 @@ public class ProductService {
             throw new CustomException(ErrorCode.ACCESS_DENIED);
         }
 
+		if (product.isDeleted()) {
+			throw new CustomException(ErrorCode.PRODUCT_NOT_FOUND);
+		}
+
         if (product.isSold()) {
             throw new CustomException(ErrorCode.CANNOT_MODIFY_SOLD_PRODUCT);
         }
