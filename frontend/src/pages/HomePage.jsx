@@ -1,82 +1,178 @@
 import {
+  AlertCircle,
   ChevronRight,
+  Loader2,
   MessageCircle,
   Plus,
+  RotateCcw,
   Search,
   ShieldCheck,
   Ticket,
 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  getPopularSearches,
+  getProductApiErrorMessage,
+  searchProducts,
+} from '../api/productApi.js';
 import EmptyState from '../components/EmptyState.jsx';
 import PageHeader from '../components/PageHeader.jsx';
 import ProductCard from '../components/ProductCard.jsx';
 
-const products = [
-  {
-    id: 1,
-    title: '아이폰 15 판매합니다',
-    price: 800000,
-    location: '서초동',
-    timeAgo: '방금 전',
-    wished: true,
-    status: 'ON_SALE',
-  },
-  {
-    id: 2,
-    title: '맥북 에어 M2 실사용 적음',
-    price: 1200000,
-    location: '역삼동',
-    timeAgo: '8분 전',
-    wished: false,
-    status: 'ON_SALE',
-  },
-  {
-    id: 3,
-    title: '원목 의자 깔끔하게 써요',
-    price: 70000,
-    location: '성수동',
-    timeAgo: '23분 전',
-    wished: false,
-    status: 'RESERVED',
-  },
-  {
-    id: 4,
-    title: '에어팟 프로 2세대',
-    price: 180000,
-    location: '잠실동',
-    timeAgo: '1시간 전',
-    wished: true,
-    status: 'SOLD',
-  },
-  {
-    id: 5,
-    title: '나이키 운동화 270',
-    price: 60000,
-    location: '망원동',
-    timeAgo: '2시간 전',
-    wished: false,
-    status: 'ON_SALE',
-  },
-  {
-    id: 6,
-    title: '27인치 사무용 모니터',
-    price: 130000,
-    location: '판교동',
-    timeAgo: '3시간 전',
-    wished: false,
-    status: 'ON_SALE',
-  },
+const PAGE_SIZE = 12;
+
+const categoryOptions = [
+  { label: '전체', value: '' },
+  { label: '디지털', value: 'DIGITAL' },
+  { label: '가구', value: 'FURNITURE' },
+  { label: '의류', value: 'CLOTHING' },
+  { label: '도서', value: 'BOOK' },
+  { label: '스포츠', value: 'SPORTS' },
+  { label: '생활용품', value: 'ETC' },
 ];
 
-const stats = [
-  { label: '오늘 등록 상품', value: '128', icon: Plus },
+const baseStats = [
+  { label: '오늘 등록 상품', icon: Plus },
   { label: '진행 중 채팅', value: '24', icon: MessageCircle },
   { label: '발급 가능 쿠폰', value: '2', icon: Ticket },
   { label: '고객 문의', value: '5', icon: ShieldCheck },
 ];
 
-const categories = ['전체', '디지털', '가구', '의류', '도서', '스포츠', '생활용품'];
+function getCategoryLabel(categoryValue) {
+  return categoryOptions.find((category) => category.value === categoryValue)?.label || '전체';
+}
 
 export default function HomePage() {
+  const [products, setProducts] = useState([]);
+  const [pageInfo, setPageInfo] = useState({
+    page: 0,
+    size: PAGE_SIZE,
+    totalElements: 0,
+    totalPages: 0,
+  });
+  const [searchInput, setSearchInput] = useState('');
+  const [submittedKeyword, setSubmittedKeyword] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [popularSearches, setPopularSearches] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+
+  const hasFilter = Boolean(submittedKeyword || selectedCategory);
+  const hasMore = pageInfo.page + 1 < pageInfo.totalPages;
+
+  const stats = useMemo(
+    () =>
+      baseStats.map((stat, index) => ({
+        ...stat,
+        value: index === 0 ? pageInfo.totalElements.toLocaleString() : stat.value,
+      })),
+    [pageInfo.totalElements],
+  );
+
+  const loadProducts = async ({
+    page = 0,
+    append = false,
+    keyword = submittedKeyword,
+    category = selectedCategory,
+  } = {}) => {
+    const normalizedKeyword = keyword.trim();
+
+    if (append) {
+      setIsLoadingMore(true);
+    } else {
+      setIsLoading(true);
+    }
+
+    setErrorMessage('');
+
+    try {
+      const nextPage = await searchProducts({
+        keyword: normalizedKeyword,
+        category,
+        page,
+        size: PAGE_SIZE,
+        sort: 'LATEST',
+      });
+
+      setProducts((prevProducts) => (append ? [...prevProducts, ...nextPage.content] : nextPage.content));
+      setPageInfo(nextPage);
+    } catch (error) {
+      setErrorMessage(getProductApiErrorMessage(error));
+      if (!append) {
+        setProducts([]);
+        setPageInfo({
+          page: 0,
+          size: PAGE_SIZE,
+          totalElements: 0,
+          totalPages: 0,
+        });
+      }
+    } finally {
+      setIsLoading(false);
+      setIsLoadingMore(false);
+    }
+  };
+
+  const loadPopularSearches = async () => {
+    try {
+      const popularKeywords = await getPopularSearches();
+      setPopularSearches(popularKeywords);
+    } catch {
+      setPopularSearches([]);
+    }
+  };
+
+  useEffect(() => {
+    loadProducts({ keyword: '', category: '' });
+    loadPopularSearches();
+  }, []);
+
+  const handleSearchSubmit = async (event) => {
+    event.preventDefault();
+
+    const nextKeyword = searchInput.trim();
+    setSubmittedKeyword(nextKeyword);
+    await loadProducts({ page: 0, keyword: nextKeyword, category: selectedCategory });
+    await loadPopularSearches();
+  };
+
+  const handleCategoryChange = (categoryValue) => {
+    setSelectedCategory(categoryValue);
+    loadProducts({ page: 0, keyword: submittedKeyword, category: categoryValue });
+  };
+
+  const handlePopularKeywordClick = async (keyword) => {
+    setSearchInput(keyword);
+    setSubmittedKeyword(keyword);
+    await loadProducts({ page: 0, keyword, category: selectedCategory });
+    await loadPopularSearches();
+  };
+
+  const handleReset = () => {
+    setSearchInput('');
+    setSubmittedKeyword('');
+    setSelectedCategory('');
+    loadProducts({ page: 0, keyword: '', category: '' });
+  };
+
+  const handleLoadMore = () => {
+    loadProducts({
+      page: pageInfo.page + 1,
+      append: true,
+      keyword: submittedKeyword,
+      category: selectedCategory,
+    });
+  };
+
+  const handleRefresh = () => {
+    loadProducts({ page: 0, keyword: submittedKeyword, category: selectedCategory });
+    loadPopularSearches();
+  };
+
+  const pageTitle = submittedKeyword ? `"${submittedKeyword}" 검색 결과` : '오늘 올라온 추천 상품';
+  const pageDescription = `${getCategoryLabel(selectedCategory)} 카테고리에서 ${pageInfo.totalElements.toLocaleString()}개 상품을 확인할 수 있어요.`;
+
   return (
     <div>
       <section className="hero-section mb-6 min-h-[340px] overflow-hidden rounded-[32px] px-6 py-8 sm:px-8 md:min-h-[380px] md:px-10">
@@ -91,10 +187,26 @@ export default function HomePage() {
             <p className="theme-hero-muted mt-4 max-w-xl text-base font-medium leading-7">
               필요한 물건은 더 합리적으로, 쓰지 않는 물건은 더 가치 있게. 5pring Market에서 오늘의 좋은 거래를 만나보세요.
             </p>
-            <div className="mt-6 flex max-w-[520px] items-center gap-3 rounded-full bg-white px-5 py-3.5 text-[var(--color-text-sub)] shadow-sm ring-1 ring-[var(--color-border)]">
-              <Search size={20} className="text-[var(--color-primary)]" />
-              <span className="text-sm font-bold">아이폰, 맥북, 의자 검색</span>
-            </div>
+
+            <form
+              className="mt-6 flex max-w-[620px] items-center gap-2 rounded-full bg-white px-4 py-2.5 text-[var(--color-text-sub)] shadow-sm ring-1 ring-[var(--color-border)]"
+              onSubmit={handleSearchSubmit}
+            >
+              <Search size={20} className="shrink-0 text-[var(--color-primary)]" />
+              <input
+                className="min-w-0 flex-1 bg-transparent text-sm font-bold text-[var(--color-text-main)] outline-none placeholder:text-[var(--color-text-sub)]"
+                value={searchInput}
+                onChange={(event) => setSearchInput(event.target.value)}
+                placeholder="상품명, 지역, 카테고리 검색"
+              />
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="theme-primary-button shrink-0 rounded-full px-4 py-2 text-sm font-black transition disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                검색
+              </button>
+            </form>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -111,40 +223,110 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section className="mb-5 rounded-[28px] border border-[var(--color-border)] bg-white p-4 shadow-[0_10px_28px_rgba(15,23,42,0.04)]">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center">
+          <div className="shrink-0 text-sm font-black text-[var(--color-text-main)]">인기 검색어 TOP10</div>
+          <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto pb-1 md:pb-0">
+            {popularSearches.length > 0 ? (
+              popularSearches.map((popular) => (
+                <button
+                  key={popular.keyword}
+                  type="button"
+                  onClick={() => handlePopularKeywordClick(popular.keyword)}
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-black text-[var(--color-text-main)] transition hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-soft)] hover:text-[var(--color-primary-dark)]"
+                >
+                  {popular.keyword}
+                  <span className="text-xs font-bold text-[var(--color-text-sub)]">{popular.searchCount}</span>
+                </button>
+              ))
+            ) : (
+              <span className="rounded-full bg-slate-50 px-3 py-2 text-sm font-bold text-[var(--color-text-sub)]">
+                아직 집계된 인기 검색어가 없습니다
+              </span>
+            )}
+          </div>
+        </div>
+      </section>
+
       <section className="mb-6 flex gap-2 overflow-x-auto pb-1">
-        {categories.map((category, index) => (
+        {categoryOptions.map((category) => (
           <button
-            key={category}
+            key={category.label}
+            type="button"
+            onClick={() => handleCategoryChange(category.value)}
             className={[
               'category-chip theme-card-hover inline-flex shrink-0 items-center rounded-full px-4 py-2.5 text-sm font-black text-[var(--color-text-main)] transition',
-              index === 0 ? 'category-chip-active' : '',
+              selectedCategory === category.value ? 'category-chip-active' : '',
             ].join(' ')}
           >
-            {category}
+            {category.label}
           </button>
         ))}
       </section>
 
       <PageHeader
         eyebrow="Products"
-        title="오늘 올라온 추천 상품"
-        description="상태와 가격, 위치를 한눈에 확인하고 마음에 드는 상품을 빠르게 살펴보세요."
+        title={pageTitle}
+        description={pageDescription}
         action={
-          <button className="theme-primary-button inline-flex items-center gap-1 rounded-full px-4 py-2.5 text-sm font-black transition">
-            전체 보기
-            <ChevronRight size={17} />
-          </button>
+          hasFilter ? (
+            <button
+              type="button"
+              onClick={handleReset}
+              className="theme-primary-button inline-flex items-center gap-1 rounded-full px-4 py-2.5 text-sm font-black transition"
+            >
+              전체 보기
+              <RotateCcw size={16} />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleRefresh}
+              className="theme-secondary-button inline-flex items-center gap-1 rounded-full px-4 py-2.5 text-sm font-black transition"
+            >
+              새로고침
+              <ChevronRight size={17} />
+            </button>
+          )
         }
       />
 
-      {products.length > 0 ? (
-        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {products.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </section>
+      {errorMessage && (
+        <div className="mb-5 flex items-center gap-2 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-bold text-red-600">
+          <AlertCircle size={17} />
+          {errorMessage}
+        </div>
+      )}
+
+      {isLoading ? (
+        <div className="theme-card flex min-h-64 flex-col items-center justify-center gap-4 rounded-[28px] p-8 text-center">
+          <Loader2 size={34} className="animate-spin text-[var(--color-primary)]" />
+          <p className="text-sm font-bold text-[var(--color-text-sub)]">상품을 불러오는 중입니다</p>
+        </div>
+      ) : products.length > 0 ? (
+        <>
+          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {products.map((product) => (
+              <ProductCard key={product.productId} product={product} />
+            ))}
+          </section>
+
+          {hasMore && (
+            <div className="mt-6 flex justify-center">
+              <button
+                type="button"
+                onClick={handleLoadMore}
+                disabled={isLoadingMore}
+                className="theme-secondary-button inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-black transition disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {isLoadingMore && <Loader2 size={17} className="animate-spin" />}
+                더보기
+              </button>
+            </div>
+          )}
+        </>
       ) : (
-        <EmptyState title="등록된 상품이 없습니다" description="새로운 상품이 올라오면 이곳에서 바로 확인할 수 있어요." />
+        <EmptyState title="상품을 찾을 수 없습니다" description="검색어를 바꾸거나 다른 카테고리를 선택해 보세요." />
       )}
     </div>
   );

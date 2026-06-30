@@ -3,6 +3,19 @@ import { Link } from 'react-router-dom';
 import routePaths from '../routes/routePaths.js';
 import StatusBadge from './StatusBadge.jsx';
 
+const categoryLabelMap = {
+  DIGITAL: '디지털',
+  FURNITURE: '가구',
+  CLOTHING: '의류',
+  BOOK: '도서',
+  SPORTS: '스포츠',
+  KIDS: '유아/아동',
+  BEAUTY: '뷰티',
+  FOOD: '식품',
+  PET: '반려동물',
+  ETC: '기타',
+};
+
 function formatPrice(price) {
   if (typeof price === 'number') {
     return `${price.toLocaleString()}원`;
@@ -11,17 +24,58 @@ function formatPrice(price) {
   return price;
 }
 
+function formatTimeAgo(createdAt) {
+  if (!createdAt) {
+    return '';
+  }
+
+  const createdDate = new Date(createdAt);
+  if (Number.isNaN(createdDate.getTime())) {
+    return '';
+  }
+
+  const diffSeconds = Math.max(0, Math.floor((Date.now() - createdDate.getTime()) / 1000));
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  const diffHours = Math.floor(diffMinutes / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffMinutes < 1) {
+    return '방금 전';
+  }
+
+  if (diffMinutes < 60) {
+    return `${diffMinutes}분 전`;
+  }
+
+  if (diffHours < 24) {
+    return `${diffHours}시간 전`;
+  }
+
+  if (diffDays < 7) {
+    return `${diffDays}일 전`;
+  }
+
+  return createdDate.toLocaleDateString('ko-KR', {
+    month: 'numeric',
+    day: 'numeric',
+  });
+}
+
 export default function ProductCard({ product }) {
   const Icon = product.icon || ImageIcon;
+  const productId = product.id ?? product.productId;
+  const imageUrl = product.imageUrl ?? product.thumbnailUrl;
+  const categoryLabel = product.location || categoryLabelMap[product.category] || product.category || '동네 거래';
+  const timeLabel = product.timeAgo || formatTimeAgo(product.createdAt);
 
   return (
     <Link
-      to={routePaths.productDetail(product.id)}
+      to={routePaths.productDetail(productId)}
       className="product-card group overflow-hidden rounded-[22px] transition duration-200 hover:-translate-y-0.5"
     >
       <div className="product-image-box relative aspect-[5/4] overflow-hidden">
-        {product.imageUrl ? (
-          <img src={product.imageUrl} alt={product.title} className="h-full w-full object-cover" />
+        {imageUrl ? (
+          <img src={imageUrl} alt={product.title} className="h-full w-full object-cover" />
         ) : (
           <div className="flex h-full w-full flex-col items-center justify-center gap-2 px-4 text-center text-[var(--color-text-sub)]">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-[var(--primary-dark)] shadow-sm ring-1 ring-[var(--color-border)]">
@@ -58,9 +112,9 @@ export default function ProductCard({ product }) {
         <div className="mt-1.5 flex items-center justify-between gap-3 text-xs font-bold text-[var(--color-text-sub)]">
           <p className="flex min-w-0 items-center gap-1">
             <MapPin size={14} />
-            <span className="truncate">{product.location}</span>
+            <span className="truncate">{categoryLabel}</span>
           </p>
-          <span className="shrink-0">{product.timeAgo}</span>
+          {timeLabel && <span className="shrink-0">{timeLabel}</span>}
         </div>
       </div>
     </Link>
