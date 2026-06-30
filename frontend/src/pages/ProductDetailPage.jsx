@@ -1,7 +1,10 @@
-import { AlertCircle, Heart, ImageIcon, Loader2, MessageCircle, ShieldCheck } from 'lucide-react';
+import { AlertCircle, Heart, ImageIcon, Loader2, MessageCircle, Pencil, ShieldCheck } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { fetchMe } from '../api/authApi.js';
+import { getAccessToken, getStoredAuthUser } from '../api/authStorage.js';
 import { getProduct, getProductApiErrorMessage } from '../api/productApi.js';
+import { addWish, getMyWishes, getWishApiErrorMessage, removeWish } from '../api/wishApi.js';
 import StatusBadge from '../components/StatusBadge.jsx';
 import routePaths from '../routes/routePaths.js';
 
@@ -48,7 +51,10 @@ export default function ProductDetailPage() {
   const { productId } = useParams();
   const [product, setProduct] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isWishLoading, setIsWishLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [wishMessage, setWishMessage] = useState('');
+  const [currentUser, setCurrentUser] = useState(getStoredAuthUser);
 
   useEffect(() => {
     let isActive = true;
@@ -56,22 +62,45 @@ export default function ProductDetailPage() {
     setIsLoading(true);
     setErrorMessage('');
 
-    getProduct(productId)
-      .then((productData) => {
-        if (isActive) {
-          setProduct(productData);
+    async function loadProductDetail() {
+      try {
+        const productData = await getProduct(productId);
+        let wished = productData.wished;
+        let authUser = getStoredAuthUser();
+
+        if (getAccessToken()) {
+          if (!authUser) {
+            try {
+              authUser = await fetchMe();
+            } catch {
+              authUser = null;
+            }
+          }
+
+          try {
+            const wishes = await getMyWishes();
+            wished = wishes.some((wish) => String(wish.productId) === String(productData.productId));
+          } catch {
+            wished = productData.wished;
+          }
         }
-      })
-      .catch((error) => {
+
+        if (isActive) {
+          setCurrentUser(authUser);
+          setProduct({ ...productData, wished });
+        }
+      } catch (error) {
         if (isActive) {
           setErrorMessage(getProductApiErrorMessage(error, '상품 상세 정보를 불러오지 못했습니다.'));
         }
-      })
-      .finally(() => {
+      } finally {
         if (isActive) {
           setIsLoading(false);
         }
-      });
+      }
+    }
+
+    loadProductDetail();
 
     return () => {
       isActive = false;
@@ -109,6 +138,35 @@ export default function ProductDetailPage() {
 
   const imageUrl = product.imageUrls?.[0];
   const categoryLabel = categoryLabelMap[product.category] || product.category || '동네 거래';
+  const isWished = Boolean(product.wished);
+  const isOwner = currentUser && String(currentUser.memberId) === String(product.sellerId);
+
+  const handleWishToggle = async () => {
+    setIsWishLoading(true);
+    setWishMessage('');
+
+    try {
+      const wishStatus = isWished ? await removeWish(product.productId) : await addWish(product.productId);
+      setProduct((prevProduct) => ({
+        ...prevProduct,
+        wished: wishStatus.wished,
+      }));
+    } catch (error) {
+      const errorCode = error?.response?.data?.code;
+
+      if (errorCode === 'WISH_ALREADY_EXISTS') {
+        setProduct((prevProduct) => ({ ...prevProduct, wished: true }));
+        setWishMessage('이미 관심상품으로 등록된 상품입니다.');
+      } else if (errorCode === 'WISH_NOT_FOUND') {
+        setProduct((prevProduct) => ({ ...prevProduct, wished: false }));
+        setWishMessage('이미 관심상품에서 해제된 상품입니다.');
+      } else {
+        setWishMessage(getWishApiErrorMessage(error));
+      }
+    } finally {
+      setIsWishLoading(false);
+    }
+  };
 
   return (
     <div className="grid gap-6 md:grid-cols-[0.9fr_1.1fr]">
@@ -157,15 +215,41 @@ export default function ProductDetailPage() {
           </div>
         </div>
 
-        <div className="mt-6 grid gap-3 sm:grid-cols-2">
-          <button className="theme-secondary-button flex items-center justify-center gap-2 rounded-2xl px-4 py-3 font-black transition">
-            <Heart size={19} />
-            찜하기
+        {wishMessage && (
+          <div className="mt-4 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-700">
+            {wishMessage}
+          </div>
+        )}
+
+        <div className={['mt-6 grid gap-3', isOwner ? 'sm:grid-cols-3' : 'sm:grid-cols-2'].join(' ')}>
+          {isOwner && (
+            <Link
+              to={routePaths.productEdit(product.productId)}
+              className="theme-secondary-button flex items-center justify-center gap-2 rounded-2xl px-4 py-3 font-black transition"
+            >
+              <Pencil size={18} />
+              수정하기
+            </Link>
+          )}
+          <button
+            type="button"
+            onClick={handleWishToggle}
+            disabled={isWishLoading}
+            className={[
+              'flex items-center justify-center gap-2 rounded-2xl px-4 py-3 font-black transition disabled:cursor-not-allowed disabled:opacity-70',
+              isWished ? 'theme-primary-button' : 'theme-secondary-button',
+            ].join(' ')}
+          >
+            <Heart size={19} className={isWished ? 'fill-current' : ''} />
+            {isWishLoading ? '처리 중' : isWished ? '찜 해제' : '찜하기'}
           </button>
-          <button className="theme-primary-button flex items-center justify-center gap-2 rounded-2xl px-4 py-3 font-black transition">
+          <Link
+            to={routePaths.chats}
+            className="theme-primary-button flex items-center justify-center gap-2 rounded-2xl px-4 py-3 font-black transition"
+          >
             <MessageCircle size={19} />
             채팅하기
-          </button>
+          </Link>
         </div>
       </section>
     </div>

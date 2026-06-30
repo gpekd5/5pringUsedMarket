@@ -61,7 +61,7 @@ function formatTimeAgo(createdAt) {
   });
 }
 
-export default function ProductCard({ product }) {
+export default function ProductCard({ product, onWishClick, isWishLoading = false }) {
   const Icon = product.icon || ImageIcon;
   const productId = product.id ?? product.productId;
   const imageUrl = product.imageUrl ?? product.thumbnailUrl;
@@ -90,10 +90,12 @@ export default function ProductCard({ product }) {
         </div>
         <button
           type="button"
-          className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-[var(--color-text-sub)] shadow-sm ring-1 ring-[var(--color-border)] transition hover:text-[var(--color-primary)]"
+          className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-[var(--color-text-sub)] shadow-sm ring-1 ring-[var(--color-border)] transition hover:text-[var(--color-primary)] disabled:cursor-not-allowed disabled:opacity-70"
           aria-label="관심상품"
+          disabled={isWishLoading}
           onClick={(event) => {
             event.preventDefault();
+            onWishClick?.(product);
           }}
         >
           <Heart

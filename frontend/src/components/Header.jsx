@@ -1,4 +1,4 @@
-import { Heart, Home, LogOut, MessageCircle, Search, ShieldCheck, ShoppingBag, Ticket, UserRound } from 'lucide-react';
+import { Heart, Home, LogOut, MessageCircle, Plus, Search, ShieldCheck, ShoppingBag, Ticket, UserRound } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { fetchMe, logout } from '../api/authApi.js';
@@ -118,6 +118,13 @@ export default function Header() {
 
           {auth.isAuthenticated ? (
             <div className="hidden items-center gap-2 sm:flex">
+              <NavLink
+                to={routePaths.productNew}
+                className="flex items-center gap-1.5 rounded-[22px] bg-[var(--color-primary)] px-4 py-3 text-sm font-black text-white shadow-sm transition hover:bg-[var(--color-primary-dark)]"
+              >
+                <Plus size={17} />
+                상품 등록
+              </NavLink>
               <span className="max-w-[132px] truncate rounded-full border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-black text-[var(--color-text-main)]">
                 {auth.user?.nickname || '회원'}님
               </span>

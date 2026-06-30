@@ -47,6 +47,59 @@ export async function getProduct(productId) {
   return unwrapApiResponse(response);
 }
 
+export async function uploadProductImage(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await apiClient.post('/api/images', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+
+  return unwrapApiResponse(response);
+}
+
+export async function createProduct({ title, price, description, category, imageKeys = [] }) {
+  const response = await apiClient.post('/api/products', {
+    title: title.trim(),
+    price: Number(price),
+    description: description.trim(),
+    category,
+    imageKeys,
+  });
+
+  return unwrapApiResponse(response);
+}
+
+export async function updateProduct(productId, { title, price, description, category, imageKeys }) {
+  const payload = {};
+
+  if (title !== undefined) {
+    payload.title = title.trim();
+  }
+
+  if (price !== undefined && price !== null && price !== '') {
+    payload.price = Number(price);
+  }
+
+  if (description !== undefined) {
+    payload.description = description.trim();
+  }
+
+  if (category) {
+    payload.category = category;
+  }
+
+  if (imageKeys !== undefined) {
+    payload.imageKeys = imageKeys;
+  }
+
+  const response = await apiClient.patch(`/api/products/${productId}`, payload);
+
+  return unwrapApiResponse(response);
+}
+
 export async function getPopularSearches() {
   const response = await apiClient.get('/api/search/popular');
   const popularSearches = unwrapApiResponse(response);

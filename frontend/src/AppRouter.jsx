@@ -7,9 +7,11 @@ import CouponsPage from './pages/CouponsPage.jsx';
 import HomePage from './pages/HomePage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
+import ProductCreatePage from './pages/ProductCreatePage.jsx';
 import ProductDetailPage from './pages/ProductDetailPage.jsx';
+import ProductEditPage from './pages/ProductEditPage.jsx';
 import SignupPage from './pages/SignupPage.jsx';
-import WishesPage from './pages/WishesPage.jsx';
+import WishListPage from './pages/WishListPage.jsx';
 
 const router = createBrowserRouter([
   {
@@ -20,8 +22,10 @@ const router = createBrowserRouter([
       { index: true, element: <HomePage /> },
       { path: 'login', element: <LoginPage /> },
       { path: 'signup', element: <SignupPage /> },
+      { path: 'products/new', element: <ProductCreatePage /> },
+      { path: 'products/:productId/edit', element: <ProductEditPage /> },
       { path: 'products/:productId', element: <ProductDetailPage /> },
-      { path: 'wishes', element: <WishesPage /> },
+      { path: 'wishes', element: <WishListPage /> },
       { path: 'chats', element: <ChatsPage /> },
       { path: 'chats/:chatRoomId', element: <ChatRoomPage /> },
       { path: 'coupons', element: <CouponsPage /> },
