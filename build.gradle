@@ -47,6 +47,9 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     testAnnotationProcessor 'org.projectlombok:lombok'
 
+    // 더미 데이터 생성용 (성능 테스트 전용)
+    implementation 'net.datafaker:datafaker:2.4.2'
+
     //QueryDsL 설정 추가
     implementation 'com.querydsl:querydsl-jpa:5.0.0:jakarta'
     annotationProcessor "com.querydsl:querydsl-apt:5.0.0:jakarta"

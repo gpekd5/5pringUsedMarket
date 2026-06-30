@@ -48,6 +48,7 @@ public class SecurityConfig {
                                 "/api/auth/reissue"
                         ).permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/products").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/products/me").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/products/{productId}").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/members/{memberId}/profile").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/coupons").permitAll()
