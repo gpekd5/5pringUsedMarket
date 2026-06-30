@@ -367,12 +367,12 @@ docker compose up -d
 
 ```dotenv
 SPRING_PROFILES_ACTIVE=local
-DB_URL=jdbc:mysql://localhost:3307/fivespring_used_market
-DB_USERNAME=root
-DB_PASSWORD=12345678
-JWT_SECRET=your-local-jwt-secret-at-least-32-characters
-JWT_ACCESS_TOKEN_EXPIRATION=1800000
-JWT_REFRESH_TOKEN_EXPIRATION=1209600000
+DB_URL=jdbc:${DB_URL}
+DB_USERNAME=${DB_USERNAME}
+DB_PASSWORD=${DB_PASSWORD}
+JWT_SECRET=${JWT_SECRET}
+JWT_ACCESS_TOKEN_EXPIRATION=${JWT_ACCESS_TOKEN_EXPIRATION}
+JWT_REFRESH_TOKEN_EXPIRATION=${JWT_REFRESH_TOKEN_EXPIRATION}
 REDIS_HOST=localhost
 REDIS_PORT=6379
 AWS_REGION=ap-northeast-2
@@ -397,6 +397,14 @@ AWS_SECRET_ACCESS_KEY=your-aws-secret-access-key
            → 상품 등록/수정 시 imageKeys로 전달
            → 상품 조회 시 서버가 Presigned URL 생성 → 응답
 ```
+
+---
+
+## 와이어프레임
+<details>
+<summary>와이어프레임</summary>
+<img src="docs/FRAME.png" width="1500" />
+</details>
 
 ---
 
