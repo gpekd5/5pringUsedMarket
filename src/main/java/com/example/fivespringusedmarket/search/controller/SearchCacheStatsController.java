@@ -3,11 +3,13 @@ package com.example.fivespringusedmarket.search.controller;
 import com.example.fivespringusedmarket.common.response.ApiResponse;
 import com.example.fivespringusedmarket.search.metrics.SearchCacheStats;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
+@Profile("local")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/search/cache-stats")
