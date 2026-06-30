@@ -1,0 +1,36 @@
+import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import App from './App.jsx';
+import AdminChatsPage from './pages/AdminChatsPage.jsx';
+import ChatRoomPage from './pages/ChatRoomPage.jsx';
+import ChatsPage from './pages/ChatsPage.jsx';
+import CouponsPage from './pages/CouponsPage.jsx';
+import HomePage from './pages/HomePage.jsx';
+import LoginPage from './pages/LoginPage.jsx';
+import NotFoundPage from './pages/NotFoundPage.jsx';
+import ProductDetailPage from './pages/ProductDetailPage.jsx';
+import SignupPage from './pages/SignupPage.jsx';
+import WishesPage from './pages/WishesPage.jsx';
+
+const router = createBrowserRouter([
+  {
+    path: '/',
+    element: <App />,
+    errorElement: <NotFoundPage />,
+    children: [
+      { index: true, element: <HomePage /> },
+      { path: 'login', element: <LoginPage /> },
+      { path: 'signup', element: <SignupPage /> },
+      { path: 'products/:productId', element: <ProductDetailPage /> },
+      { path: 'wishes', element: <WishesPage /> },
+      { path: 'chats', element: <ChatsPage /> },
+      { path: 'chats/:chatRoomId', element: <ChatRoomPage /> },
+      { path: 'coupons', element: <CouponsPage /> },
+      { path: 'admin/chats', element: <AdminChatsPage /> },
+      { path: '*', element: <NotFoundPage /> },
+    ],
+  },
+]);
+
+export default function AppRouter() {
+  return <RouterProvider router={router} />;
+}
