@@ -6,6 +6,7 @@ import com.example.fivespringusedmarket.chat.dto.response.ChatMessageBroadcast;
 import com.example.fivespringusedmarket.chat.dto.response.CsRoomListResponse;
 import com.example.fivespringusedmarket.chat.dto.response.CsStatusUpdateResponse;
 import com.example.fivespringusedmarket.chat.entity.*;
+import com.example.fivespringusedmarket.chat.redis.ChatRedisPublisher;
 import com.example.fivespringusedmarket.chat.repository.ChatMemberRepository;
 import com.example.fivespringusedmarket.chat.repository.ChatMessageRepository;
 import com.example.fivespringusedmarket.chat.repository.ChatRoomRepository;
@@ -15,7 +16,6 @@ import com.example.fivespringusedmarket.member.entity.Member;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,7 +29,7 @@ public class AdminChatService {
     private final ChatMemberRepository chatMemberRepository;
     private final ChatRoomCommonMethod chatRoomCommonMethod;
     private final ChatMessageRepository chatMessageRepository;
-    private final SimpMessagingTemplate messagingTemplate;
+    private final ChatRedisPublisher chatRedisPublisher;
 
     @Transactional
     public AdminEnterResponse adminEnterCsRoom(Long roomId, Long adminId) {
@@ -80,11 +80,8 @@ public class AdminChatService {
                 .findFirst()
                 .ifPresent(ChatMember::incrementUnreadCount);
 
-        // STOMP 브로드캐스트
-        messagingTemplate.convertAndSend(
-                "/sub/chat/rooms/" + roomId,
-                ChatMessageBroadcast.from(systemMessage)
-        );
+        // Redis Pub/Sub으로 브로드캐스트 — 다중 서버 환경에서 모든 인스턴스에 전달된다
+        chatRedisPublisher.publish(roomId, ChatMessageBroadcast.from(systemMessage));
         return new CsStatusUpdateResponse(roomId, newStatus.name());
     }
 

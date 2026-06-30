@@ -4,28 +4,28 @@ import com.example.fivespringusedmarket.chat.dto.request.ChatSendRequest;
 import com.example.fivespringusedmarket.common.exception.CustomException;
 import com.example.fivespringusedmarket.common.exception.ErrorCode;
 import com.example.fivespringusedmarket.chat.dto.response.ChatMessageBroadcast;
+import com.example.fivespringusedmarket.chat.redis.ChatRedisPublisher;
 import com.example.fivespringusedmarket.chat.service.StompService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 
 import java.security.Principal;
 
 /**
  STOMP 메시지 수신 핸들러를 담당한다.
- /pub/chat/{roomId} 단일 경로로 수신하고 type 필드(TALK / ENTER / LEAVE)로 분기한다.
+ /pub/chat/rooms/{roomId}/messages 경로로 수신하고 type 필드로 분기한다.
  ChannelInterceptor에서 검증된 Principal을 통해 발신자를 식별한다.
+ 브로드캐스트는 Redis Pub/Sub을 통해 처리해 다중 서버 환경을 지원한다.
  */
-
 @Controller
 @RequiredArgsConstructor
 public class StompController {
 
     private final StompService stompService;
-    private final SimpMessagingTemplate messagingTemplate;
+    private final ChatRedisPublisher chatRedisPublisher;
 
     /**
      채팅방 메시지를 수신하고 type에 따라 처리를 분기한다.
@@ -45,7 +45,7 @@ public class StompController {
             case SYSTEM -> throw new CustomException(ErrorCode.INVALID_MESSAGE_TYPE);
         };
 
-        messagingTemplate.convertAndSend("/sub/chat/rooms/" + roomId, broadcast);
+        chatRedisPublisher.publish(roomId, broadcast);
     }
 }
 

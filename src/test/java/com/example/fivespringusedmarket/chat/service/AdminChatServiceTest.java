@@ -4,6 +4,7 @@ import com.example.fivespringusedmarket.chat.common.ChatRoomCommonMethod;
 import com.example.fivespringusedmarket.chat.dto.response.AdminEnterResponse;
 import com.example.fivespringusedmarket.chat.dto.response.CsStatusUpdateResponse;
 import com.example.fivespringusedmarket.chat.entity.*;
+import com.example.fivespringusedmarket.chat.redis.ChatRedisPublisher;
 import com.example.fivespringusedmarket.chat.repository.ChatMemberRepository;
 import com.example.fivespringusedmarket.chat.repository.ChatMessageRepository;
 import com.example.fivespringusedmarket.chat.repository.ChatRoomRepository;
@@ -17,7 +18,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
@@ -40,7 +40,7 @@ class AdminChatServiceTest {
     @Mock private ChatMemberRepository chatMemberRepository;
     @Mock private ChatRoomCommonMethod chatRoomCommonMethod;
     @Mock private ChatMessageRepository chatMessageRepository;
-    @Mock private SimpMessagingTemplate messagingTemplate;
+    @Mock private ChatRedisPublisher chatRedisPublisher;
 
     private Member admin;
     private ChatRoom csRoom;
@@ -111,8 +111,8 @@ class AdminChatServiceTest {
         assertThat(response.roomId()).isEqualTo(10L);
         assertThat(response.csStatus()).isEqualTo("COMPLETED");
         assertThat(csRoom.getCsStatus()).isEqualTo(CsStatus.COMPLETED);
-        verify(messagingTemplate).convertAndSend(
-                "/sub/chat/rooms/10",
+        verify(chatRedisPublisher).publish(
+                10L,
                 com.example.fivespringusedmarket.chat.dto.response.ChatMessageBroadcast.from(systemMessage)
         );
     }
