@@ -80,8 +80,8 @@ public class AdminChatService {
                 .findFirst()
                 .ifPresent(ChatMember::incrementUnreadCount);
 
-        // Redis Pub/Sub으로 브로드캐스트 — 다중 서버 환경에서 모든 인스턴스에 전달된다
-        chatRedisPublisher.publish(roomId, ChatMessageBroadcast.from(systemMessage));
+        // Redis Pub/Sub으로 브로드캐스트 — csStatus 값을 포함해 클라이언트 UI 전환에 사용
+        chatRedisPublisher.publish(roomId, ChatMessageBroadcast.csStatusEvent(systemMessage, newStatus.name()));
         return new CsStatusUpdateResponse(roomId, newStatus.name());
     }
 
