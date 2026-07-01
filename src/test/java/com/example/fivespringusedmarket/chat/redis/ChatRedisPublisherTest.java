@@ -8,7 +8,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.test.util.ReflectionTestUtils;
 import tools.jackson.databind.ObjectMapper;
 
 import java.time.LocalDateTime;
@@ -29,7 +28,7 @@ class ChatRedisPublisherTest {
     @Mock private ObjectMapper objectMapper;
 
     @Test
-    @DisplayName("publish 성공 - chat-room:{roomId} 채널에 JSON 문자열 발행")
+    @DisplayName("publish 성공 - 단일 채팅 이벤트 채널에 JSON 문자열 발행")
     void publish_success_sendsJsonToCorrectChannel() throws Exception {
         ChatMessageBroadcast broadcast = new ChatMessageBroadcast(
                 1L, 5L, "TALK", 10L, "테스터", "안녕하세요", LocalDateTime.now(), null
@@ -38,7 +37,7 @@ class ChatRedisPublisherTest {
 
         chatRedisPublisher.publish(5L, broadcast);
 
-        verify(redisTemplate).convertAndSend(eq("chat-room:5"), anyString());
+        verify(redisTemplate).convertAndSend(eq("chat-room-events"), anyString());
     }
 
     @Test
@@ -52,12 +51,12 @@ class ChatRedisPublisherTest {
 
         chatRedisPublisher.publish(3L, broadcast);
 
-        verify(redisTemplate).convertAndSend("chat-room:3", expectedJson);
+        verify(redisTemplate).convertAndSend("chat-room-events", expectedJson);
     }
 
     @Test
-    @DisplayName("publish 성공 - roomId별로 채널이 분리됨")
-    void publish_success_channelIsolatedByRoomId() throws Exception {
+    @DisplayName("publish 성공 - roomId가 다른 메시지도 단일 채널로 발행됨")
+    void publish_success_usesSingleEventChannel() throws Exception {
         ChatMessageBroadcast broadcastRoom1 = new ChatMessageBroadcast(
                 1L, 1L, "TALK", 10L, "유저A", "방1 메시지", LocalDateTime.now(), null
         );
@@ -70,7 +69,6 @@ class ChatRedisPublisherTest {
         chatRedisPublisher.publish(1L, broadcastRoom1);
         chatRedisPublisher.publish(2L, broadcastRoom2);
 
-        verify(redisTemplate).convertAndSend(eq("chat-room:1"), anyString());
-        verify(redisTemplate).convertAndSend(eq("chat-room:2"), anyString());
+        verify(redisTemplate, org.mockito.Mockito.times(2)).convertAndSend(eq("chat-room-events"), anyString());
     }
 }
