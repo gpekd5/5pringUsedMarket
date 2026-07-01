@@ -343,38 +343,50 @@ COMPLETED
 
 # 2-A. 이미지 업로드 API
 
-## 2-A-1. 상품 이미지 업로드
+## 2-A-1. 상품 이미지 업로드 URL 발급
 
 - Method: `POST`
-- Path: `/api/images`
+- Path: `/api/images/presigned-url`
 - Auth: 필요
-- Content-Type: `multipart/form-data`
+- Content-Type: `application/json`
 
 ### Request
 
+```json
+{
+  "fileName": "상품 등록 이미지(아이패드).png",
+  "contentType": "image/png",
+  "fileSize": 1886531
+}
+```
+
+위 예시는 `test-data/images/상품 등록 이미지(아이패드).png` 파일 기준이다. 다른 파일을 업로드할 때는 `fileName`을 실제 파일명으로, `contentType`을 S3 직접 PUT 요청의 `Content-Type`과 같은 값으로, `fileSize`를 실제 파일 크기(byte)로 전달한다. 프론트엔드에서는 브라우저 `File` 객체의 `file.name`, `file.type`, `file.size` 값을 사용한다.
+
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| file | MultipartFile | Y | jpg/jpeg/png/webp 이미지 파일 |
+| fileName | String | Y | 원본 파일명. 확장자 검증에 사용 |
+| contentType | String | Y | 업로드할 파일 Content-Type |
+| fileSize | Long | Y | 업로드할 파일 크기(byte) |
 
 ### Validation
 
 | 항목 | 규칙 |
 |---|---|
-| empty | 빈 파일 거부 |
-| MIME type | image/jpeg, image/png, image/webp 허용 |
-| extension | jpg, jpeg, png, webp 허용 |
+| fileName | null, blank, 확장자 없음 거부 |
+| contentType | image/jpeg, image/png 허용 |
+| extension | jpg, jpeg, png 허용 |
+| fileSize | null 또는 0 이하 거부 |
 | size | `AWS_S3_MAX_FILE_SIZE` 이하 |
-
-Spring multipart 파서 제한도 `AWS_S3_MAX_FILE_SIZE`와 같은 값으로 맞춘다.
 
 ### Response
 
 ```json
 {
   "success": true,
-  "message": "이미지 업로드에 성공했습니다.",
+  "message": "이미지 업로드 URL이 발급되었습니다.",
   "data": {
-    "imageKey": "products/11111111-1111-1111-1111-111111111111.png"
+    "imageKey": "products/11111111-1111-1111-1111-111111111111.png",
+    "uploadUrl": "https://bucket-name.s3.ap-northeast-2.amazonaws.com/products/11111111-1111-1111-1111-111111111111.png?X-Amz-Signature=..."
   }
 }
 ```
@@ -382,19 +394,42 @@ Spring multipart 파서 제한도 `AWS_S3_MAX_FILE_SIZE`와 같은 값으로 맞
 ### 처리 정책
 
 - S3 Bucket은 Private 정책을 유지한다.
-- 업로드 성공 응답은 `imageUrl` 또는 Public S3 URL이 아니라 `imageKey`만 반환한다.
-- 현재 서버가 생성하는 `imageKey` 형식은 `products/{uuid}.{jpg|jpeg|png|webp}`이다.
-- `products` 디렉터리는 `AWS_S3_DIRECTORY` 기본값 기준이며, 현재 상품 API의 imageKey 검증도 이 형식을 기준으로 한다.
+- 서버는 이미지 파일 바이트를 직접 받지 않고, 10분 만료 Presigned PUT URL을 발급한다.
+- 클라이언트 또는 Postman은 응답의 `uploadUrl`로 S3에 직접 `PUT` 업로드한다.
+- 업로드 URL 발급 응답은 Public S3 URL이 아니라 `imageKey`와 임시 `uploadUrl`만 반환한다.
+- 현재 서버가 생성하는 `imageKey` 형식은 `products/{uuid}.{jpg|jpeg|png}`이다.
+- 상품 이미지 Object Key prefix는 설정으로 변경하지 않고 `products/`로 고정한다.
 - 상품 조회 응답의 이미지 URL은 서버가 생성한 10분 만료 Presigned URL을 사용한다.
+- DB에는 Presigned URL을 저장하지 않고 `imageKey`만 저장한다.
+- S3 직접 PUT 요청에는 백엔드 JWT Authorization 헤더를 넣지 않는다.
+- S3 직접 PUT 요청의 `Content-Type`은 업로드 URL 발급 요청의 `contentType`과 동일하게 맞춘다.
+- Postman에서 S3 직접 PUT 요청 Body는 binary/file로 설정하고, URL 발급 요청에 사용한 파일과 같은 파일을 선택한다.
+- S3 응답은 보통 `200 OK` 또는 `204 No Content`일 수 있다.
+
+### Postman 트러블슈팅
+
+| 오류 | 원인 | 해결 |
+|---|---|---|
+| Only one auth mechanism allowed | S3 직접 PUT 요청에 Authorization Bearer Token이 포함됨 | `2-0-1. S3 직접 PUT 업로드` 요청의 Authorization을 `No Auth`로 변경 |
+| SignatureDoesNotMatch | Presigned URL 발급 시 보낸 `fileSize`와 실제 업로드 파일 크기가 다름 | 실제 파일 byte 크기를 확인해 `fileSize`에 정확히 입력하고 Presigned URL을 새로 발급 |
+| SignatureDoesNotMatch | Presigned URL 발급 시 보낸 `contentType`과 실제 PUT Header의 `Content-Type`이 다름 | 두 값을 동일하게 맞추고 Presigned URL을 새로 발급 |
+| S3 PUT 요청 실패 | Body를 `form-data` 또는 raw JSON으로 전송함 | Body를 binary/file 방식으로 변경 |
 
 ### Error
 
 | Status | Code | 설명 |
 |---|---|---|
-| 400 | EMPTY_IMAGE_FILE | 빈 이미지 파일 |
+| 400 | EMPTY_IMAGE_FILE | fileSize가 0 이하 |
 | 400 | INVALID_IMAGE_FILE | 지원하지 않는 MIME 타입 또는 확장자 |
 | 400 | IMAGE_FILE_SIZE_EXCEEDED | 이미지 파일 크기 제한 초과 |
-| 500 | IMAGE_UPLOAD_FAILED | S3 업로드 실패 |
+
+### 보안 한계와 개선 방향
+
+Presigned PUT 방식에서는 서버가 업로드 파일의 실제 바이트를 직접 받지 않는다. 따라서 현재 구현의 검증 범위는 파일명 기반 확장자, 요청 Content-Type, 요청 fileSize, UUID 기반 imageKey 형식 검증이다.
+
+Content-Type은 클라이언트가 전달하는 값이므로 위변조 가능하고, 확장자도 파일명 변경으로 위변조 가능하다. 서버 부하와 이미지 트래픽을 줄이는 장점은 있지만, 실제 파일 내용 검증은 별도 후처리 구조가 필요하다.
+
+향후에는 `temp/products/{uuid}.{ext}` 임시 경로에 먼저 업로드하고 S3 Event 또는 Lambda로 파일 시그니처, 실제 MIME Type, 파일 크기, 악성 파일 여부를 검사한 뒤 정상 파일만 `products/{uuid}.{ext}` 최종 경로로 이동하는 구조를 검토한다. 필요하면 `image_uploads` 테이블로 `imageKey`, `memberId`, `status`, `expiresAt`을 관리한다.
 
 ---
 
@@ -408,10 +443,11 @@ Spring multipart 파서 제한도 `AWS_S3_MAX_FILE_SIZE`와 같은 값으로 맞
 
 ### 처리 정책
 
-- 상품 이미지는 `/api/images`로 먼저 업로드한다.
+- 상품 이미지는 `/api/images/presigned-url`로 업로드 URL을 발급받은 뒤 S3에 직접 PUT 업로드한다.
 - 업로드 응답의 `imageKey` 목록을 `imageKeys`로 전달한다.
-- 서버는 `products/{uuid}.{jpg|jpeg|png|webp}` 형식의 `imageKey`만 `product_images.image_key`에 저장한다.
+- 서버는 `products/{uuid}.{jpg|jpeg|png}` 형식의 `imageKey`만 `product_images.image_key`에 저장한다.
 - `imageKeys` 항목이 `null`, blank, URL 문자열, `products/` 외 prefix, UUID 파일명 규칙이 아닌 값이면 거부한다.
+- 상품 등록/수정 저장 전 `imageKeys`의 S3 Object가 실제 존재하는지 `HeadObject`로 확인한다.
 - 응답의 `imageUrls`는 저장된 `imageKey`를 10분 만료 Presigned URL로 변환한 값이다.
 
 ### Request
@@ -424,7 +460,7 @@ Spring multipart 파서 제한도 `AWS_S3_MAX_FILE_SIZE`와 같은 값으로 맞
   "category": "DIGITAL",
   "imageKeys": [
     "products/11111111-1111-1111-1111-111111111111.jpg",
-    "products/22222222-2222-2222-2222-222222222222.webp"
+    "products/22222222-2222-2222-2222-222222222222.png"
   ]
 }
 ```
@@ -446,7 +482,7 @@ Spring multipart 파서 제한도 `AWS_S3_MAX_FILE_SIZE`와 같은 값으로 맞
     "status": "ON_SALE",
     "imageUrls": [
       "https://bucket-name.s3.ap-northeast-2.amazonaws.com/products/11111111-1111-1111-1111-111111111111.jpg?X-Amz-Signature=...",
-      "https://bucket-name.s3.ap-northeast-2.amazonaws.com/products/22222222-2222-2222-2222-222222222222.webp?X-Amz-Signature=..."
+      "https://bucket-name.s3.ap-northeast-2.amazonaws.com/products/22222222-2222-2222-2222-222222222222.png?X-Amz-Signature=..."
     ],
     "wished": false,
     "createdAt": "2026-06-22T10:00:00",

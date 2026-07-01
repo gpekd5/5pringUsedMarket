@@ -7,16 +7,7 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "aws.s3")
 public class S3Properties {
 
-    private String directory = "products";
     private long maxFileSize = 5 * 1024 * 1024;
-
-    public String getDirectory() {
-        return directory;
-    }
-
-    public void setDirectory(String directory) {
-        this.directory = directory;
-    }
 
     public long getMaxFileSize() {
         return maxFileSize;

@@ -3,6 +3,7 @@ package com.example.fivespringusedmarket.product.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -81,7 +82,7 @@ class ProductServiceTest {
                 "DIGITAL",
                 List.of(
                         "products/11111111-1111-1111-1111-111111111111.png",
-                        "products/22222222-2222-2222-2222-222222222222.webp"
+                        "products/22222222-2222-2222-2222-222222222222.jpg"
                 )
         );
 
@@ -90,7 +91,7 @@ class ProductServiceTest {
         when(productImageRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(s3PresignedUrlService.createPresignedUrl("products/11111111-1111-1111-1111-111111111111.png"))
                 .thenReturn("https://presigned.test/a");
-        when(s3PresignedUrlService.createPresignedUrl("products/22222222-2222-2222-2222-222222222222.webp"))
+        when(s3PresignedUrlService.createPresignedUrl("products/22222222-2222-2222-2222-222222222222.jpg"))
                 .thenReturn("https://presigned.test/b");
 
         // when
@@ -104,7 +105,7 @@ class ProductServiceTest {
         assertThat(images).extracting(ProductImage::getImageKey)
                 .containsExactly(
                         "products/11111111-1111-1111-1111-111111111111.png",
-                        "products/22222222-2222-2222-2222-222222222222.webp"
+                        "products/22222222-2222-2222-2222-222222222222.jpg"
                 );
         assertThat(response.imageUrls())
                 .containsExactly("https://presigned.test/a", "https://presigned.test/b");
@@ -164,6 +165,49 @@ class ProductServiceTest {
                 .isInstanceOf(CustomException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.INVALID_IMAGE_KEY);
+    }
+
+    @Test
+    void createProductRejectsWebpImageKey() {
+        // given
+        CreateProductRequest request = new CreateProductRequest(
+                "맥북",
+                1000000,
+                "상태 좋습니다",
+                "DIGITAL",
+                List.of("products/11111111-1111-1111-1111-111111111111.webp")
+        );
+
+        // when & then
+        assertThatThrownBy(() -> productService.createProduct(1L, request))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVALID_IMAGE_KEY);
+    }
+
+    @Test
+    void createProductRejectsImageKeyWhenS3ObjectDoesNotExist() {
+        // given
+        String imageKey = "products/11111111-1111-1111-1111-111111111111.png";
+        CreateProductRequest request = new CreateProductRequest(
+                "맥북",
+                1000000,
+                "상태 좋습니다",
+                "DIGITAL",
+                List.of(imageKey)
+        );
+
+        doThrow(new CustomException(ErrorCode.INVALID_IMAGE_KEY))
+                .when(s3PresignedUrlService)
+                .validateUploadedImageExists(imageKey);
+
+        // when & then
+        assertThatThrownBy(() -> productService.createProduct(1L, request))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVALID_IMAGE_KEY);
+
+        verify(productRepository, never()).save(any(Product.class));
     }
 
     @Test

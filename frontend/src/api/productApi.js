@@ -1,4 +1,8 @@
+import axios from 'axios';
 import apiClient from './apiClient.js';
+
+const ALLOWED_IMAGE_CONTENT_TYPES = new Set(['image/jpeg', 'image/png']);
+const ALLOWED_IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png']);
 
 function unwrapApiResponse(response) {
   return response.data?.data ?? response.data;
@@ -48,16 +52,35 @@ export async function getProduct(productId) {
 }
 
 export async function uploadProductImage(file) {
-  const formData = new FormData();
-  formData.append('file', file);
+  validateProductImageFile(file);
 
-  const response = await apiClient.post('/api/images', formData, {
+  const presignedResponse = await apiClient.post('/api/images/presigned-url', {
+    fileName: file.name,
+    contentType: file.type,
+    fileSize: file.size,
+  });
+  const { imageKey, uploadUrl } = unwrapApiResponse(presignedResponse);
+
+  await axios.put(uploadUrl, file, {
     headers: {
-      'Content-Type': 'multipart/form-data',
+      'Content-Type': file.type,
     },
   });
 
-  return unwrapApiResponse(response);
+  return { imageKey };
+}
+
+function validateProductImageFile(file) {
+  if (!file) {
+    throw new Error('이미지 파일을 선택해주세요.');
+  }
+
+  const contentType = file.type?.toLowerCase();
+  const extension = file.name?.split('.').pop()?.toLowerCase();
+
+  if (!ALLOWED_IMAGE_CONTENT_TYPES.has(contentType) || !ALLOWED_IMAGE_EXTENSIONS.has(extension)) {
+    throw new Error('상품 이미지는 jpg, jpeg, png 파일만 업로드할 수 있습니다.');
+  }
 }
 
 export async function createProduct({ title, price, description, category, imageKeys = [] }) {

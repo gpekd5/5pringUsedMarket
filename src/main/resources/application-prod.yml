@@ -10,11 +10,6 @@ spring:
     password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
-  servlet:
-    multipart:
-      max-file-size: ${AWS_S3_MAX_FILE_SIZE:5242880}
-      max-request-size: ${AWS_S3_MAX_FILE_SIZE:5242880}
-
   cloud:
     aws:
       region:
@@ -31,7 +26,6 @@ spring:
 
 aws:
   s3:
-    directory: ${AWS_S3_DIRECTORY:products}
     max-file-size: ${AWS_S3_MAX_FILE_SIZE:5242880}
 
 jwt:

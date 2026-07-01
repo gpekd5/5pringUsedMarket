@@ -377,7 +377,6 @@ REDIS_HOST=localhost
 REDIS_PORT=6379
 AWS_REGION=ap-northeast-2
 AWS_S3_BUCKET=your-s3-bucket-name
-AWS_S3_DIRECTORY=products
 AWS_S3_MAX_FILE_SIZE=5242880
 AWS_ACCESS_KEY_ID=your-aws-access-key-id
 AWS_SECRET_ACCESS_KEY=your-aws-secret-access-key

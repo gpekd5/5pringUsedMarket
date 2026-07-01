@@ -4,35 +4,36 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 import com.example.fivespringusedmarket.common.response.ApiResponse;
-import com.example.fivespringusedmarket.image.dto.ImageUploadResponse;
-import com.example.fivespringusedmarket.image.service.S3Uploader;
+import com.example.fivespringusedmarket.image.dto.PresignedUploadUrlRequest;
+import com.example.fivespringusedmarket.image.dto.PresignedUploadUrlResponse;
+import com.example.fivespringusedmarket.image.service.S3PresignedUrlService;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.http.ResponseEntity;
-import org.springframework.mock.web.MockMultipartFile;
 
 class ImageUploadControllerTest {
 
     @Test
-    void uploadImageReturnsImageKey() {
+    void createUploadPresignedUrlReturnsImageKeyAndUploadUrl() {
         // given
-        S3Uploader s3Uploader = Mockito.mock(S3Uploader.class);
-        ImageUploadController controller = new ImageUploadController(s3Uploader);
-        MockMultipartFile file = new MockMultipartFile(
-                "file",
-                "sample.png",
-                "image/png",
-                "image".getBytes()
+        S3PresignedUrlService s3PresignedUrlService = Mockito.mock(S3PresignedUrlService.class);
+        ImageUploadController controller = new ImageUploadController(s3PresignedUrlService);
+        PresignedUploadUrlRequest request = new PresignedUploadUrlRequest("sample.png", "image/png", 1234L);
+        PresignedUploadUrlResponse serviceResponse = new PresignedUploadUrlResponse(
+                "products/11111111-1111-1111-1111-111111111111.png",
+                "https://test-bucket.s3.ap-northeast-2.amazonaws.com/products/11111111-1111-1111-1111-111111111111.png?X-Amz-Signature=test"
         );
 
-        when(s3Uploader.uploadImage(file)).thenReturn("products/sample.png");
+        when(s3PresignedUrlService.createUploadPresignedUrl(request)).thenReturn(serviceResponse);
 
         // when
-        ResponseEntity<ApiResponse<ImageUploadResponse>> response = controller.uploadImage(file);
+        ResponseEntity<ApiResponse<PresignedUploadUrlResponse>> response = controller.createUploadPresignedUrl(request);
 
         // then
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().success()).isTrue();
-        assertThat(response.getBody().data().imageKey()).isEqualTo("products/sample.png");
+        assertThat(response.getBody().data().imageKey())
+                .isEqualTo("products/11111111-1111-1111-1111-111111111111.png");
+        assertThat(response.getBody().data().uploadUrl()).contains("X-Amz-Signature=test");
     }
 }

@@ -14,7 +14,6 @@
 # REDIS_PORT=6379
 # AWS_REGION=ap-northeast-2
 # AWS_S3_BUCKET=your-s3-bucket-name
-# AWS_S3_DIRECTORY=products
 # AWS_S3_MAX_FILE_SIZE=5242880
 # AWS_ACCESS_KEY_ID=your-aws-access-key-id
 # AWS_SECRET_ACCESS_KEY=your-aws-secret-access-key
@@ -29,11 +28,6 @@ spring:
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:12345678}
     driver-class-name: com.mysql.cj.jdbc.Driver
-
-  servlet:
-    multipart:
-      max-file-size: ${AWS_S3_MAX_FILE_SIZE:5242880}
-      max-request-size: ${AWS_S3_MAX_FILE_SIZE:5242880}
 
   data:
     redis:
@@ -62,5 +56,4 @@ jwt:
 
 aws:
   s3:
-    directory: ${AWS_S3_DIRECTORY:products}
     max-file-size: ${AWS_S3_MAX_FILE_SIZE:5242880}
