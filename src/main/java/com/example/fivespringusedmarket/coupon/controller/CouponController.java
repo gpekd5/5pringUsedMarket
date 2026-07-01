@@ -5,7 +5,6 @@ import com.example.fivespringusedmarket.common.security.AuthMember;
 import com.example.fivespringusedmarket.coupon.dto.CouponResponse;
 import com.example.fivespringusedmarket.coupon.dto.IssueCouponResponse;
 import com.example.fivespringusedmarket.coupon.dto.UserCouponResponse;
-import com.example.fivespringusedmarket.coupon.service.CouponService;
 import com.example.fivespringusedmarket.coupon.service.LockService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -31,14 +30,13 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class CouponController {
 
-    private final CouponService couponService;
     private final LockService lockService;
 
     @GetMapping("/coupons")
     public ResponseEntity<ApiResponse<Page<CouponResponse>>> getCoupons(
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
-        Page<CouponResponse> result = couponService.getCoupons(pageable);
+        Page<CouponResponse> result = lockService.getCoupons(pageable);
         return ResponseEntity.ok(ApiResponse.success("이벤트 쿠폰 목록 조회에 성공했습니다.", result));
     }
 
@@ -59,7 +57,7 @@ public class CouponController {
             @AuthenticationPrincipal AuthMember authMember
     ) {
         // used 파라미터로 사용/미사용 필터링 가능
-        Page<UserCouponResponse> result = couponService.getMyCoupons(authMember.memberId(), used, pageable);
+        Page<UserCouponResponse> result = lockService.getMyCoupons(authMember.memberId(), used, pageable);
         return ResponseEntity.ok(ApiResponse.success("내 쿠폰 목록 조회에 성공했습니다.", result));
     }
 
@@ -68,7 +66,7 @@ public class CouponController {
             @PathVariable Long userCouponId,
             @AuthenticationPrincipal AuthMember authMember
     ) {
-        couponService.useCoupon(userCouponId, authMember.memberId());
+        lockService.useCoupon(userCouponId, authMember.memberId());
         return ResponseEntity.ok(ApiResponse.success("쿠폰이 사용되었습니다.", null));
     }
 }

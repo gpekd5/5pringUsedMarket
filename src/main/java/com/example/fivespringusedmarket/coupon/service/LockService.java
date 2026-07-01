@@ -2,15 +2,21 @@ package com.example.fivespringusedmarket.coupon.service;
 
 import com.example.fivespringusedmarket.common.exception.CustomException;
 import com.example.fivespringusedmarket.common.exception.ErrorCode;
+import com.example.fivespringusedmarket.coupon.dto.CouponResponse;
 import com.example.fivespringusedmarket.coupon.dto.IssueCouponResponse;
+import com.example.fivespringusedmarket.coupon.dto.UserCouponResponse;
 import com.example.fivespringusedmarket.coupon.repository.CouponRedisLockRepository;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 /**
- * Redis Lock 을 이용한 쿠폰 발급 동시성 제어 서비스.
- * Lettuce SETNX 기반 Spin Lock 방식으로 구현하며, 외부에서는 이 서비스만 의존한다.
+ * 쿠폰 관련 외부 진입점 서비스.
+ * CouponController 는 이 서비스만 의존한다. 발급은 Redis Lock 보호 하에 실행되고,
+ * 나머지 기능은 CouponService 로 위임한다. CouponService.issueCoupon() 을 외부에서
+ * 직접 호출해 Lock 을 우회하는 경로를 차단하기 위해 도입한 구조다.
  */
 @Service
 @RequiredArgsConstructor
@@ -41,6 +47,18 @@ public class LockService {
             // 예외 발생 여부와 무관하게 Lock 해제
             couponRedisLockRepository.unlock(lockKey, lockValue);
         }
+    }
+
+    public Page<CouponResponse> getCoupons(Pageable pageable) {
+        return couponService.getCoupons(pageable);
+    }
+
+    public Page<UserCouponResponse> getMyCoupons(Long memberId, Boolean used, Pageable pageable) {
+        return couponService.getMyCoupons(memberId, used, pageable);
+    }
+
+    public void useCoupon(Long userCouponId, Long memberId) {
+        couponService.useCoupon(userCouponId, memberId);
     }
 
     private void acquireLock(String lockKey, String lockValue) {
