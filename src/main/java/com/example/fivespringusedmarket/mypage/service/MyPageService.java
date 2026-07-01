@@ -48,19 +48,19 @@ public class MyPageService {
         );
     }
 
-    private Long getSellingProductCount(Long memberId) {
+    private long getSellingProductCount(Long memberId) {
         return productRepository.countBySellerIdAndStatusNot(memberId, ProductStatus.DELETED);
     }
 
-    private Long getWishedProductCount(Long memberId) {
+    private long getWishedProductCount(Long memberId) {
         return wishRepository.countByMemberIdAndProductStatusNot(memberId, ProductStatus.DELETED);
     }
 
-    private Long getChatRoomCount(Long memberId) {
+    private long getChatRoomCount(Long memberId) {
         return chatMemberRepository.countByMemberId(memberId);
     }
 
-    private Long getCouponCount(Long memberId) {
+    private long getCouponCount(Long memberId) {
         return userCouponRepository.countByMemberId(memberId);
     }
 }
