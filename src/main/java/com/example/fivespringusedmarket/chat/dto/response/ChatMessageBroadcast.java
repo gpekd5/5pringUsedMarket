@@ -15,7 +15,8 @@ public record ChatMessageBroadcast(
         Long senderId,
         String senderNickname,
         String content,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        String csStatus   // CS 상태 변경 이벤트에서만 값 있음, 나머지는 null
 ) {
     public static ChatMessageBroadcast from(ChatMessage message) {
         Long senderId = message.getSender() != null ? message.getSender().getId() : null;
@@ -28,7 +29,30 @@ public record ChatMessageBroadcast(
                 senderId,
                 senderNickname,
                 message.getContent(),
-                message.getCreatedAt()
+                message.getCreatedAt(),
+                null
         );
+    }
+
+    // CS 상태 변경 이벤트 — 클라이언트가 csStatus 값으로 UI 상태 전환에 사용
+    public static ChatMessageBroadcast csStatusEvent(ChatMessage systemMessage, String csStatus) {
+        Long senderId = systemMessage.getSender() != null ? systemMessage.getSender().getId() : null;
+        String senderNickname = systemMessage.getSender() != null ? systemMessage.getSender().getNickname() : null;
+
+        return new ChatMessageBroadcast(
+                systemMessage.getId(),
+                systemMessage.getChatRoom().getId(),
+                systemMessage.getType().name(),
+                senderId,
+                senderNickname,
+                systemMessage.getContent(),
+                systemMessage.getCreatedAt(),
+                csStatus
+        );
+    }
+
+    // 읽음 이벤트 — 상대방 화면의 안읽음 수 실시간 제거용
+    public static ChatMessageBroadcast readEvent(Long roomId, Long memberId) {
+        return new ChatMessageBroadcast(null, roomId, "READ", memberId, null, null, LocalDateTime.now(), null);
     }
 }

@@ -8,6 +8,7 @@ import com.example.fivespringusedmarket.chat.entity.ChatMessage;
 import com.example.fivespringusedmarket.chat.entity.ChatMember;
 import com.example.fivespringusedmarket.chat.entity.ChatMemberRole;
 import com.example.fivespringusedmarket.chat.entity.ChatRoom;
+import com.example.fivespringusedmarket.chat.redis.ChatRedisPublisher;
 import com.example.fivespringusedmarket.chat.repository.ChatMemberRepository;
 import com.example.fivespringusedmarket.chat.repository.ChatMessageRepository;
 import com.example.fivespringusedmarket.chat.repository.ChatRoomRepository;
@@ -36,6 +37,7 @@ public class ChatService {
     private final ChatMemberRepository chatMemberRepository;
     private final ChatMessageRepository chatMessageRepository;
     private final ChatRoomCommonMethod chatRoomCommonMethod;
+    private final ChatRedisPublisher chatRedisPublisher;
 
     @Transactional
     public TradeChatRoomCreateResponse findOrCreateTradeRoom(Long buyerId, TradeChatRoomCreateRequest request) {
@@ -62,7 +64,7 @@ public class ChatService {
         }
 
         // 신규 채팅방 및 참여자(두 명 모두 MEMBER) 동시 생성 — 하나의 트랜잭션 안에서 처리한다.
-        ChatRoom room = chatRoomRepository.save(ChatRoom.createTradeRoom(product));
+        ChatRoom room = chatRoomRepository.save(ChatRoom.createTradeRoom(product, buyerId));
         chatMemberRepository.save(ChatMember.create(room, buyer, ChatMemberRole.MEMBER));
         chatMemberRepository.save(ChatMember.create(room, seller, ChatMemberRole.MEMBER));
 
@@ -174,6 +176,7 @@ public class ChatService {
                 .ifPresent(latestMessage -> {
                     chatMember.updateLastReadMessageId(latestMessage.getId());
                     chatMember.resetUnreadCount();
+                    chatRedisPublisher.publish(roomId, ChatMessageBroadcast.readEvent(roomId, memberId));
                 });
     }
 }

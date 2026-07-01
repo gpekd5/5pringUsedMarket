@@ -52,6 +52,13 @@ public class AdminChatService {
         // 입장과 동시에 IN_PROGRESS로 자동 전이한다.
         room.changeCsStatus(CsStatus.IN_PROGRESS);
 
+        // 시스템 메시지 저장 및 브로드캐스트 — 고객 화면에 실시간으로 상태 전환 알림
+        ChatMessage systemMessage = chatMessageRepository.save(
+                ChatMessage.createSystem(room, "상담사가 연결되었습니다.")
+        );
+        room.updateLastMessage(systemMessage.getContent(), systemMessage.getCreatedAt());
+        chatRedisPublisher.publish(roomId, ChatMessageBroadcast.csStatusEvent(systemMessage, CsStatus.IN_PROGRESS.name()));
+
         return new AdminEnterResponse(room.getId(), room.getTitle(), room.getCsStatus().name());
     }
 
@@ -80,8 +87,8 @@ public class AdminChatService {
                 .findFirst()
                 .ifPresent(ChatMember::incrementUnreadCount);
 
-        // Redis Pub/Sub으로 브로드캐스트 — 다중 서버 환경에서 모든 인스턴스에 전달된다
-        chatRedisPublisher.publish(roomId, ChatMessageBroadcast.from(systemMessage));
+        // Redis Pub/Sub으로 브로드캐스트 — csStatus 값을 포함해 클라이언트 UI 전환에 사용
+        chatRedisPublisher.publish(roomId, ChatMessageBroadcast.csStatusEvent(systemMessage, newStatus.name()));
         return new CsStatusUpdateResponse(roomId, newStatus.name());
     }
 

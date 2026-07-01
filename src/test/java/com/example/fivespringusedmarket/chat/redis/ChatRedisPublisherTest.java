@@ -32,7 +32,7 @@ class ChatRedisPublisherTest {
     @DisplayName("publish 성공 - chat-room:{roomId} 채널에 JSON 문자열 발행")
     void publish_success_sendsJsonToCorrectChannel() throws Exception {
         ChatMessageBroadcast broadcast = new ChatMessageBroadcast(
-                1L, 5L, "TALK", 10L, "테스터", "안녕하세요", LocalDateTime.now()
+                1L, 5L, "TALK", 10L, "테스터", "안녕하세요", LocalDateTime.now(), null
         );
         given(objectMapper.writeValueAsString(broadcast)).willReturn("{\"content\":\"안녕하세요\"}");
 
@@ -45,7 +45,7 @@ class ChatRedisPublisherTest {
     @DisplayName("publish 성공 - ObjectMapper로 직렬화된 JSON이 발행됨")
     void publish_success_usesObjectMapperSerialization() throws Exception {
         ChatMessageBroadcast broadcast = new ChatMessageBroadcast(
-                2L, 3L, "SYSTEM", null, null, "상태가 변경되었습니다.", LocalDateTime.now()
+                2L, 3L, "SYSTEM", null, null, "상태가 변경되었습니다.", LocalDateTime.now(), null
         );
         String expectedJson = "{\"messageId\":2,\"content\":\"상태가 변경되었습니다.\"}";
         given(objectMapper.writeValueAsString(broadcast)).willReturn(expectedJson);
@@ -59,10 +59,10 @@ class ChatRedisPublisherTest {
     @DisplayName("publish 성공 - roomId별로 채널이 분리됨")
     void publish_success_channelIsolatedByRoomId() throws Exception {
         ChatMessageBroadcast broadcastRoom1 = new ChatMessageBroadcast(
-                1L, 1L, "TALK", 10L, "유저A", "방1 메시지", LocalDateTime.now()
+                1L, 1L, "TALK", 10L, "유저A", "방1 메시지", LocalDateTime.now(), null
         );
         ChatMessageBroadcast broadcastRoom2 = new ChatMessageBroadcast(
-                2L, 2L, "TALK", 20L, "유저B", "방2 메시지", LocalDateTime.now()
+                2L, 2L, "TALK", 20L, "유저B", "방2 메시지", LocalDateTime.now(), null
         );
         given(objectMapper.writeValueAsString(broadcastRoom1)).willReturn("{\"roomId\":1}");
         given(objectMapper.writeValueAsString(broadcastRoom2)).willReturn("{\"roomId\":2}");

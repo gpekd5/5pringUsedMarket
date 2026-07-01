@@ -16,6 +16,7 @@ import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import java.time.LocalDateTime;
 
 import jakarta.validation.constraints.NotBlank;
@@ -34,6 +35,11 @@ import lombok.NoArgsConstructor;
         name = "chat_rooms",
         indexes = {
                 @Index(name = "idx_chat_rooms_last_message_at", columnList = "last_message_at DESC")
+        },
+        uniqueConstraints = {
+                // 동일한 (구매자, 상품) 조합의 거래 채팅방 중복 생성 방지
+                // CS 채팅방은 buyer_id가 null이므로 제약 대상 아님
+                @UniqueConstraint(name = "uq_trade_chat_room", columnNames = {"product_id", "buyer_id"})
         }
 )
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -55,6 +61,11 @@ public class ChatRoom extends BaseEntity {
     @JoinColumn(name = "product_id")
     private Product product;
 
+    // TRADE 전용. uq_trade_chat_room 유니크 제약의 구성 컬럼.
+    // CS 채팅방은 null이며 유니크 제약 대상에서 제외된다.
+    @Column(name = "buyer_id")
+    private Long buyerId;
+
     // CS 전용. TRADE 채팅방은 null이다.
     @Enumerated(EnumType.STRING)
     @Column(name = "cs_status", length = 20)
@@ -71,11 +82,12 @@ public class ChatRoom extends BaseEntity {
      * 거래 채팅방을 생성한다.
      * 상품명을 채팅방 제목으로 사용한다.
      */
-    public static ChatRoom createTradeRoom(Product product) {
+    public static ChatRoom createTradeRoom(Product product, Long buyerId) {
         ChatRoom room = new ChatRoom();
         room.type = ChatRoomType.TRADE;
         room.title = product.getTitle();
         room.product = product;
+        room.buyerId = buyerId;
         return room;
     }
 

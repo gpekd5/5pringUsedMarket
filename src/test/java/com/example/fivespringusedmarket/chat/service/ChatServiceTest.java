@@ -5,6 +5,7 @@ import com.example.fivespringusedmarket.chat.dto.request.TradeChatRoomCreateRequ
 import com.example.fivespringusedmarket.chat.dto.response.TradeChatRoomCreateResponse;
 import com.example.fivespringusedmarket.chat.entity.ChatMemberRole;
 import com.example.fivespringusedmarket.chat.entity.ChatRoom;
+import com.example.fivespringusedmarket.chat.redis.ChatRedisPublisher;
 import com.example.fivespringusedmarket.chat.repository.ChatMemberRepository;
 import com.example.fivespringusedmarket.chat.repository.ChatMessageRepository;
 import com.example.fivespringusedmarket.chat.repository.ChatRoomRepository;
@@ -44,6 +45,7 @@ class ChatServiceTest {
     @Mock private ChatMemberRepository chatMemberRepository;
     @Mock private ChatMessageRepository chatMessageRepository;
     @Mock private ChatRoomCommonMethod chatRoomCommonMethod;
+    @Mock private ChatRedisPublisher chatRedisPublisher;
 
     private Member seller;
     private Member buyer;
@@ -70,7 +72,7 @@ class ChatServiceTest {
     @DisplayName("거래 채팅방 신규 생성 성공")
     void findOrCreateTradeRoom_newRoom_success() {
         TradeChatRoomCreateRequest request = new TradeChatRoomCreateRequest(100L);
-        ChatRoom newRoom = ChatRoom.createTradeRoom(product);
+        ChatRoom newRoom = ChatRoom.createTradeRoom(product, 2L);
         ReflectionTestUtils.setField(newRoom, "id", 10L);
 
         given(chatRoomCommonMethod.getProductOrThrow(100L)).willReturn(product);
@@ -91,7 +93,7 @@ class ChatServiceTest {
     @DisplayName("거래 채팅방 기존 방 반환 - 동일 조합 재요청 시 신규 생성 안 함")
     void findOrCreateTradeRoom_existingRoom_returnsExisting() {
         TradeChatRoomCreateRequest request = new TradeChatRoomCreateRequest(100L);
-        ChatRoom existingRoom = ChatRoom.createTradeRoom(product);
+        ChatRoom existingRoom = ChatRoom.createTradeRoom(product, 2L);
         ReflectionTestUtils.setField(existingRoom, "id", 10L);
 
         given(chatRoomCommonMethod.getProductOrThrow(100L)).willReturn(product);

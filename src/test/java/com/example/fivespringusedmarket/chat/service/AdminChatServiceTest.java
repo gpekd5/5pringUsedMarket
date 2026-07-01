@@ -57,9 +57,13 @@ class AdminChatServiceTest {
     @Test
     @DisplayName("관리자 입장 성공 - WAITING 방 입장 시 IN_PROGRESS 전이")
     void adminEnterCsRoom_success() {
+        ChatMessage systemMessage = ChatMessage.createSystem(csRoom, "상담사가 연결되었습니다.");
+        ReflectionTestUtils.setField(systemMessage, "id", 50L);
+
         given(chatRoomRepository.findByIdWithLock(10L)).willReturn(Optional.of(csRoom));
         given(chatRoomCommonMethod.getMemberOrThrow(1L)).willReturn(admin);
         given(chatMemberRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+        given(chatMessageRepository.save(any())).willReturn(systemMessage);
 
         AdminEnterResponse response = adminChatService.adminEnterCsRoom(10L, 1L);
 
@@ -113,7 +117,7 @@ class AdminChatServiceTest {
         assertThat(csRoom.getCsStatus()).isEqualTo(CsStatus.COMPLETED);
         verify(chatRedisPublisher).publish(
                 10L,
-                com.example.fivespringusedmarket.chat.dto.response.ChatMessageBroadcast.from(systemMessage)
+                com.example.fivespringusedmarket.chat.dto.response.ChatMessageBroadcast.csStatusEvent(systemMessage, "COMPLETED")
         );
     }
 

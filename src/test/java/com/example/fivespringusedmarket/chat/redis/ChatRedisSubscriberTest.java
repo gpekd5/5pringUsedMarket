@@ -44,7 +44,7 @@ class ChatRedisSubscriberTest {
         given(message.getBody()).willReturn("{}".getBytes());
 
         ChatMessageBroadcast broadcast = new ChatMessageBroadcast(
-                1L, 5L, "TALK", 10L, "테스터", "안녕하세요", LocalDateTime.now()
+                1L, 5L, "TALK", 10L, "테스터", "안녕하세요", LocalDateTime.now(), null
         );
         given(objectMapper.readValue(any(byte[].class), eq(ChatMessageBroadcast.class))).willReturn(broadcast);
 
@@ -62,7 +62,7 @@ class ChatRedisSubscriberTest {
         given(message.getBody()).willReturn("{}".getBytes());
 
         ChatMessageBroadcast broadcast = new ChatMessageBroadcast(
-                2L, 99L, "TALK", 20L, "유저B", "메시지", LocalDateTime.now()
+                2L, 99L, "TALK", 20L, "유저B", "메시지", LocalDateTime.now(), null
         );
         given(objectMapper.readValue(any(byte[].class), eq(ChatMessageBroadcast.class))).willReturn(broadcast);
 
