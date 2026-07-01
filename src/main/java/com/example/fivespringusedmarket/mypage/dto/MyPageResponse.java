@@ -6,9 +6,9 @@ package com.example.fivespringusedmarket.mypage.dto;
 public record MyPageResponse(
         Long memberId,
         String nickname,
-        Long sellingProductCount,
-        Long wishedProductCount,
-        Long chatRoomCount,
-        Long couponCount
+        long sellingProductCount,
+        long wishedProductCount,
+        long chatRoomCount,
+        long couponCount
 ) {
 }
