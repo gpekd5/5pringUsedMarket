@@ -34,6 +34,7 @@
 - `jpg`, `jpeg`, `png` 확장자만 허용
 - `products/{uuid}.{jpg|jpeg|png}` 형식의 `imageKey`만 상품 등록/수정에서 허용
 - URL 문자열과 `products/` 외 prefix 거부
+- 상품 등록/수정 저장 전 S3 `HeadObject`로 imageKey Object 존재 여부 확인
 
 ## 5. 보안상 남은 한계
 

@@ -284,6 +284,7 @@ S3 Bucket은 Private 정책을 유지하고, DB에는 Public URL이 아니라 S3
 
 상품 등록/수정 요청의 `imageKeys`는 클라이언트 입력이므로 그대로 신뢰하지 않는다.
 현재 프로젝트 범위에서는 최소 방어선으로 `products/{uuid}.{jpg|jpeg|png}` 형식만 허용하고, URL 문자열이나 다른 prefix의 key는 거부한다. 업로드 URL 발급 단계에서는 `image/jpeg`, `image/png` Content-Type과 `jpg`, `jpeg`, `png` 확장자만 허용하며 `AWS_S3_MAX_FILE_SIZE`를 초과하는 요청을 거부한다.
+상품 등록/수정 저장 전에는 S3 `HeadObject`로 전달된 `imageKey`가 실제 업로드된 Object인지 확인한다.
 
 Presigned PUT 방식은 서버 이미지 트래픽과 부하를 줄이지만, 서버가 파일 바이트를 직접 보지 않는다. 따라서 Content-Type은 클라이언트가 전달하는 값이라 위변조 가능하고, 확장자도 파일명 변경으로 위변조 가능하다. 실제 파일 내용 검증은 별도 후처리 구조가 필요하다.
 

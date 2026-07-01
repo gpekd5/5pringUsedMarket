@@ -11,8 +11,12 @@ import java.util.Set;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import software.amazon.awssdk.core.exception.SdkClientException;
+import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
@@ -25,15 +29,18 @@ public class S3PresignedUrlService {
     private static final Set<String> ALLOWED_EXTENSIONS = Set.of("jpg", "jpeg", "png");
 
     private final S3Presigner s3Presigner;
+    private final S3Client s3Client;
     private final S3Properties s3Properties;
     private final String bucket;
 
     public S3PresignedUrlService(
             S3Presigner s3Presigner,
+            S3Client s3Client,
             S3Properties s3Properties,
             @Value("${spring.cloud.aws.s3.bucket:}") String bucket
     ) {
         this.s3Presigner = s3Presigner;
+        this.s3Client = s3Client;
         this.s3Properties = s3Properties;
         this.bucket = bucket;
     }
@@ -96,6 +103,25 @@ public class S3PresignedUrlService {
         return s3Presigner.presignGetObject(presignRequest)
                 .url()
                 .toString();
+    }
+
+    public void validateUploadedImageExists(String imageKey) {
+        HeadObjectRequest headObjectRequest = HeadObjectRequest.builder()
+                .bucket(bucket)
+                .key(imageKey)
+                .build();
+
+        try {
+            s3Client.headObject(headObjectRequest);
+        } catch (S3Exception exception) {
+            if (exception.statusCode() == 404) {
+                throw new CustomException(ErrorCode.INVALID_IMAGE_KEY);
+            }
+
+            throw new CustomException(ErrorCode.IMAGE_UPLOAD_FAILED);
+        } catch (SdkClientException exception) {
+            throw new CustomException(ErrorCode.IMAGE_UPLOAD_FAILED);
+        }
     }
 
     private void validateUploadRequest(PresignedUploadUrlRequest request) {

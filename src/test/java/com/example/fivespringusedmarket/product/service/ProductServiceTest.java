@@ -3,6 +3,7 @@ package com.example.fivespringusedmarket.product.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -182,6 +183,31 @@ class ProductServiceTest {
                 .isInstanceOf(CustomException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.INVALID_IMAGE_KEY);
+    }
+
+    @Test
+    void createProductRejectsImageKeyWhenS3ObjectDoesNotExist() {
+        // given
+        String imageKey = "products/11111111-1111-1111-1111-111111111111.png";
+        CreateProductRequest request = new CreateProductRequest(
+                "맥북",
+                1000000,
+                "상태 좋습니다",
+                "DIGITAL",
+                List.of(imageKey)
+        );
+
+        doThrow(new CustomException(ErrorCode.INVALID_IMAGE_KEY))
+                .when(s3PresignedUrlService)
+                .validateUploadedImageExists(imageKey);
+
+        // when & then
+        assertThatThrownBy(() -> productService.createProduct(1L, request))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVALID_IMAGE_KEY);
+
+        verify(productRepository, never()).save(any(Product.class));
     }
 
     @Test

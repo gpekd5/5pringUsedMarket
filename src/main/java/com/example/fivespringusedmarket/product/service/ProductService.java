@@ -331,6 +331,8 @@ public class ProductService {
                     || !ImageKeyPolicy.isValidProductImageKey(imageKey)) {
                 throw new CustomException(ErrorCode.INVALID_IMAGE_KEY);
             }
+
+            s3PresignedUrlService.validateUploadedImageExists(imageKey);
         }
     }
 

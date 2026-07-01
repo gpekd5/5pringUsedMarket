@@ -447,6 +447,7 @@ Content-Type은 클라이언트가 전달하는 값이므로 위변조 가능하
 - 업로드 응답의 `imageKey` 목록을 `imageKeys`로 전달한다.
 - 서버는 `products/{uuid}.{jpg|jpeg|png}` 형식의 `imageKey`만 `product_images.image_key`에 저장한다.
 - `imageKeys` 항목이 `null`, blank, URL 문자열, `products/` 외 prefix, UUID 파일명 규칙이 아닌 값이면 거부한다.
+- 상품 등록/수정 저장 전 `imageKeys`의 S3 Object가 실제 존재하는지 `HeadObject`로 확인한다.
 - 응답의 `imageUrls`는 저장된 `imageKey`를 10분 만료 Presigned URL로 변환한 값이다.
 
 ### Request

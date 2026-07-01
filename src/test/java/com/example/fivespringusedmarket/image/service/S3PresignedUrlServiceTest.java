@@ -16,6 +16,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
+import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
+import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
@@ -25,14 +29,16 @@ import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequ
 class S3PresignedUrlServiceTest {
 
     private S3Presigner s3Presigner;
+    private S3Client s3Client;
     private S3PresignedUrlService service;
 
     @BeforeEach
     void setUp() {
         s3Presigner = Mockito.mock(S3Presigner.class);
+        s3Client = Mockito.mock(S3Client.class);
         S3Properties s3Properties = new S3Properties();
         s3Properties.setMaxFileSize(1024L);
-        service = new S3PresignedUrlService(s3Presigner, s3Properties, "test-bucket");
+        service = new S3PresignedUrlService(s3Presigner, s3Client, s3Properties, "test-bucket");
     }
 
     @Test
@@ -163,5 +169,36 @@ class S3PresignedUrlServiceTest {
 
         // then
         assertThat(presignedUrl).isNull();
+    }
+
+    @Test
+    void validateUploadedImageExistsChecksS3HeadObject() {
+        // given
+        String imageKey = "products/11111111-1111-1111-1111-111111111111.png";
+        when(s3Client.headObject(Mockito.any(HeadObjectRequest.class)))
+                .thenReturn(HeadObjectResponse.builder().build());
+
+        // when
+        service.validateUploadedImageExists(imageKey);
+
+        // then
+        ArgumentCaptor<HeadObjectRequest> requestCaptor = ArgumentCaptor.forClass(HeadObjectRequest.class);
+        verify(s3Client).headObject(requestCaptor.capture());
+        assertThat(requestCaptor.getValue().bucket()).isEqualTo("test-bucket");
+        assertThat(requestCaptor.getValue().key()).isEqualTo(imageKey);
+    }
+
+    @Test
+    void validateUploadedImageExistsRejectsMissingS3Object() {
+        // given
+        String imageKey = "products/11111111-1111-1111-1111-111111111111.png";
+        when(s3Client.headObject(Mockito.any(HeadObjectRequest.class)))
+                .thenThrow(S3Exception.builder().statusCode(404).build());
+
+        // when & then
+        assertThatThrownBy(() -> service.validateUploadedImageExists(imageKey))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVALID_IMAGE_KEY);
     }
 }
