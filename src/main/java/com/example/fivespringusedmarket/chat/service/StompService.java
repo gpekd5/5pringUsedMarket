@@ -23,6 +23,10 @@ public class StompService {
 
     @Transactional
     public ChatMessageBroadcast sendMessage(Long roomId, Long senderId, ChatSendRequest request) {
+        if (request.content() == null || request.content().isBlank()) {
+            throw new CustomException(ErrorCode.INVALID_MESSAGE_CONTENT);
+        }
+
         ChatRoom room = chatRoomCommonMethod.getChatRoomOrThrow(roomId);
 
         chatRoomCommonMethod.validateChatMember(roomId, senderId);
