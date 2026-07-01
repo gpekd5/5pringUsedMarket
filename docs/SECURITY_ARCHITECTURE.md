@@ -278,11 +278,18 @@ Chat Redis Pub/Sub
 # Private S3 이미지 접근
 
 S3 Bucket은 Private 정책을 유지하고, DB에는 Public URL이 아니라 S3 Object Key만 저장한다.
-상품 조회, 상품 목록, 검색 응답은 서버가 저장된 key를 10분 만료 Presigned URL로 변환해 반환한다.
+이미지 업로드는 서버 경유 MultipartFile 방식이 아니라 Presigned PUT URL 기반 직접 업로드 방식으로 처리한다. 서버는 `POST /api/images/presigned-url` 요청에서 파일명, Content-Type, fileSize를 검증한 뒤 10분 만료 업로드 URL과 `imageKey`를 발급한다. 클라이언트는 이 URL로 Private S3 Bucket에 직접 PUT 업로드한다.
+
+상품 조회, 상품 목록, 검색 응답은 서버가 저장된 key를 10분 만료 Presigned GET URL로 변환해 반환한다.
 
 상품 등록/수정 요청의 `imageKeys`는 클라이언트 입력이므로 그대로 신뢰하지 않는다.
-현재 프로젝트 범위에서는 최소 방어선으로 `products/{uuid}.{jpg|jpeg|png|webp}` 형식만 허용하고, URL 문자열이나 다른 prefix의 key는 거부한다.
-추후 이미지 업로드 이력을 저장하게 되면 `memberId`, `imageKey`, 사용 여부를 검증해 업로드 소유권까지 확인한다.
+현재 프로젝트 범위에서는 최소 방어선으로 `products/{uuid}.{jpg|jpeg|png}` 형식만 허용하고, URL 문자열이나 다른 prefix의 key는 거부한다. 업로드 URL 발급 단계에서는 `image/jpeg`, `image/png` Content-Type과 `jpg`, `jpeg`, `png` 확장자만 허용하며 `AWS_S3_MAX_FILE_SIZE`를 초과하는 요청을 거부한다.
+
+Presigned PUT 방식은 서버 이미지 트래픽과 부하를 줄이지만, 서버가 파일 바이트를 직접 보지 않는다. 따라서 Content-Type은 클라이언트가 전달하는 값이라 위변조 가능하고, 확장자도 파일명 변경으로 위변조 가능하다. 실제 파일 내용 검증은 별도 후처리 구조가 필요하다.
+
+향후 보안 강화를 위해 `temp/products/{uuid}.{ext}` 임시 prefix에 먼저 업로드하고, S3 Event 또는 일정 주기 Lambda로 파일 시그니처, 실제 MIME Type, 파일 크기, 악성 파일 여부를 검사한 뒤 검증 성공 시 `products/{uuid}.{ext}` 최종 경로로 이동하는 구조를 검토한다. 검증 실패 파일은 삭제한다. 필요하면 `image_uploads` 테이블을 도입해 `imageKey`, `memberId`, `status(PENDING, APPROVED, REJECTED)`, `expiresAt`을 관리하고, 상품 등록/수정 API는 APPROVED 상태의 최종 imageKey만 허용한다.
+
+브라우저 프론트에서 직접 업로드하려면 S3 Bucket CORS 설정이 필요하다. 운영 체크리스트에는 `AllowedMethods: PUT, GET`, `AllowedHeaders: Content-Type`, 프론트 도메인 `AllowedOrigins`, `ExposeHeaders: ETag`를 포함한다. Postman 검증만으로는 CORS 설정이 필요하지 않다.
 
 운영 환경의 AWS 자격 증명은 EC2 IAM Role 기반 기본 자격 증명 체인을 우선한다.
 `application-prod.yml`에는 장기 Access Key를 고정하지 않는다.

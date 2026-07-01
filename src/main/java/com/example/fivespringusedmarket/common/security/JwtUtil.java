@@ -35,18 +35,20 @@ public class JwtUtil {
     private final long refreshTokenExpiration;
 
     public JwtUtil(
-            @Value("${jwt.secret:}") String secret,
+            @Value("${jwt.secret}") String secret,
             @Value("${jwt.access-token-expiration:1800000}") long accessTokenExpiration,
             @Value("${jwt.refresh-token-expiration:1209600000}") long refreshTokenExpiration
     ) {
+        if (!StringUtils.hasText(secret)) {
+            throw new IllegalStateException("JWT secret must not be blank");
+        }
+
         this.secret = secret;
         this.accessTokenExpiration = accessTokenExpiration;
         this.refreshTokenExpiration = refreshTokenExpiration;
     }
 
     public String createAccessToken(Member member) {
-        validateSecret();
-
         Date now = new Date();
         Date expiration = new Date(now.getTime() + accessTokenExpiration);
 
@@ -65,8 +67,6 @@ public class JwtUtil {
     }
 
     public String createRefreshToken(Member member) {
-        validateSecret();
-
         Date now = new Date();
         Date expiration = new Date(now.getTime() + refreshTokenExpiration);
 
@@ -147,8 +147,6 @@ public class JwtUtil {
     }
 
     private Claims parseClaims(String token) {
-        validateSecret();
-
         return Jwts.parser()
                 .verifyWith(getSigningKey())
                 .build()
@@ -192,11 +190,5 @@ public class JwtUtil {
 
     private SecretKey getSigningKey() {
         return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
-    }
-
-    private void validateSecret() {
-        if (!StringUtils.hasText(secret)) {
-            throw new CustomException(ErrorCode.INVALID_TOKEN);
-        }
     }
 }

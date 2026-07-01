@@ -1,33 +1,32 @@
 package com.example.fivespringusedmarket.image.controller;
 
 import com.example.fivespringusedmarket.common.response.ApiResponse;
-import com.example.fivespringusedmarket.image.dto.ImageUploadResponse;
-import com.example.fivespringusedmarket.image.service.S3Uploader;
+import com.example.fivespringusedmarket.image.dto.PresignedUploadUrlRequest;
+import com.example.fivespringusedmarket.image.dto.PresignedUploadUrlResponse;
+import com.example.fivespringusedmarket.image.service.S3PresignedUrlService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/images")
 public class ImageUploadController {
 
-    private final S3Uploader s3Uploader;
+    private final S3PresignedUrlService s3PresignedUrlService;
 
     /**
-     * 상품 이미지를 S3에 먼저 업로드하고, 상품 등록 API에서 사용할 imageKey를 반환한다.
+     * 클라이언트가 Private S3 Bucket에 직접 업로드할 수 있는 Presigned PUT URL을 발급한다.
      */
-    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ApiResponse<ImageUploadResponse>> uploadImage(
-            @RequestPart("file") MultipartFile file
+    @PostMapping("/presigned-url")
+    public ResponseEntity<ApiResponse<PresignedUploadUrlResponse>> createUploadPresignedUrl(
+            @Valid @RequestBody PresignedUploadUrlRequest request
     ) {
-        String imageKey = s3Uploader.uploadImage(file);
-        // 공통 응답 형식은 유지하되, data에는 Public URL이 아닌 imageKey만 담는다.
-        return ResponseEntity.ok(ApiResponse.success("이미지 업로드에 성공했습니다.", new ImageUploadResponse(imageKey)));
+        PresignedUploadUrlResponse response = s3PresignedUrlService.createUploadPresignedUrl(request);
+        return ResponseEntity.ok(ApiResponse.success("이미지 업로드 URL이 발급되었습니다.", response));
     }
 }

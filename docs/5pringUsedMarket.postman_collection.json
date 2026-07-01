@@ -1,6 +1,6 @@
 {
   "info": {
-    "_postman_id": "6c3f4c57-3bb3-4b93-83d0-5pring-used-market",
+    "_postman_id": "3d5fb072-fbd2-45ac-9ee7-aedf643edd85",
     "name": "5pringUsedMarket API",
     "description": "docs/API_SPEC.md 설계 기준 전체 API 컬렉션입니다. 아직 구현 전인 API도 팀 작업용으로 모두 포함했습니다.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -50,6 +50,10 @@
     },
     {
       "key": "imageKey",
+      "value": ""
+    },
+    {
+      "key": "uploadUrl",
       "value": ""
     },
     {
@@ -450,31 +454,31 @@
       "name": "2. Products",
       "item": [
         {
-          "name": "2-0. 상품 이미지 업로드",
+          "name": "2-0. Presigned 이미지 업로드 URL 발급",
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
-              "mode": "formdata",
-              "formdata": [
-                {
-                  "key": "file",
-                  "type": "file",
-                  "src": []
-                }
-              ]
+              "mode": "raw",
+              "raw": "{\n  \"fileName\": \"상품 등록 이미지(아이패드).png\",\n  \"contentType\": \"image/png\",\n  \"fileSize\": 1886531\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/api/images",
+              "raw": "{{baseUrl}}/api/images/presigned-url",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
-                "images"
+                "images",
+                "presigned-url"
               ]
             },
-            "description": "Private S3 Bucket에 이미지를 업로드하고 상품 등록/수정에 사용할 data.imageKey를 반환합니다. Postman에서 file 값을 로컬 이미지 파일로 선택한 뒤 실행하세요."
+            "description": "이 요청은 실제 이미지 파일을 업로드하는 요청이 아닙니다.\n백엔드에는 파일명, Content-Type, 파일 크기만 전달합니다.\n서버는 이 정보를 기준으로 imageKey와 S3 직접 업로드용 uploadUrl을 발급합니다.\nfileSize는 실제 업로드할 파일의 byte 크기와 정확히 일치해야 합니다.\nfileSize가 실제 PUT 업로드 시 Content-Length와 다르면 S3에서 SignatureDoesNotMatch가 발생합니다.\n프론트엔드에서는 브라우저 File 객체의 file.name, file.type, file.size 값을 사용합니다.\n현재 예시는 test-data/images/상품 등록 이미지(아이패드).png 파일 기준입니다."
           },
           "event": [
             {
@@ -483,18 +487,52 @@
                 "type": "text/javascript",
                 "exec": [
                   "const json = pm.response.json();",
-                  "pm.test('imageKey가 반환된다', function () {",
+                  "",
+                  "pm.test('Presigned uploadUrl과 imageKey가 반환된다', function () {",
+                  "  pm.response.to.have.status(200);",
                   "  pm.expect(json).to.have.property('success', true);",
                   "  pm.expect(json.data).to.have.property('imageKey');",
+                  "  pm.expect(json.data).to.have.property('uploadUrl');",
                   "});",
-                  "if (json && json.data && json.data.imageKey) {",
-                  "  pm.collectionVariables.set('imageKey', json.data.imageKey);",
-                  "  pm.environment.set('imageKey', json.data.imageKey);",
+                  "",
+                  "if (json && json.data) {",
+                  "  if (json.data.imageKey) {",
+                  "    pm.collectionVariables.set('imageKey', json.data.imageKey);",
+                  "    pm.environment.set('imageKey', json.data.imageKey);",
+                  "  }",
+                  "  if (json.data.uploadUrl) {",
+                  "    pm.collectionVariables.set('uploadUrl', json.data.uploadUrl);",
+                  "    pm.environment.set('uploadUrl', json.data.uploadUrl);",
+                  "  }",
                   "}"
                 ]
               }
             }
           ],
+          "response": []
+        },
+        {
+          "name": "2-0-1. S3 직접 PUT 업로드",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "image/png"
+              }
+            ],
+            "body": {
+              "mode": "file",
+              "file": {
+                "src": ""
+              }
+            },
+            "url": "{{uploadUrl}}",
+            "description": "이 요청은 백엔드 API가 아니라 AWS S3에 직접 요청하는 단계입니다.\nCollection 전체에 Bearer Token이 걸려 있어도 이 요청만큼은 반드시 No Auth로 실행합니다.\nS3 Presigned URL에는 이미 X-Amz-Algorithm, X-Amz-Credential, X-Amz-Signature가 포함되어 있으므로 Authorization: Bearer ... 헤더가 들어가면 Only one auth mechanism allowed 오류가 발생합니다.\nHeader의 Content-Type은 Presigned URL 발급 요청의 contentType(image/png)과 동일해야 합니다.\n파일 크기가 Presigned URL 발급 요청의 fileSize(1886531)와 다르면 SignatureDoesNotMatch가 발생합니다.\nBody는 form-data나 raw JSON이 아니라 binary/file 방식으로 설정하고, 실제 이미지 파일을 선택합니다.\n정상 응답은 보통 200 OK 또는 204 No Content입니다.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
           "response": []
         },
         {
@@ -509,7 +547,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"MacBook Pro 14인치\",\n  \"price\": 2500000,\n  \"description\": \"2023년 구매, 상태 매우 좋음\",\n  \"category\": \"DIGITAL\",\n  \"imageKeys\": [\n    \"{{imageKey}}\"\n  ]\n}"
+              "raw": "{\n  \"title\": \"아이패드\",\n  \"price\": 250000,\n  \"description\": \"상태 좋은 아이패드입니다.\",\n  \"category\": \"DIGITAL\",\n  \"imageKeys\": [\n    \"{{imageKey}}\"\n  ]\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/products",
@@ -520,7 +558,8 @@
                 "api",
                 "products"
               ]
-            }
+            },
+            "description": "상품 등록 API에는 이미지 파일을 직접 보내지 않습니다.\nPOST /api/images/presigned-url 응답에서 받은 imageKey를 imageKeys 배열에 넣어 보냅니다.\nuploadUrl은 S3 직접 업로드에만 사용하는 임시 URL이므로 상품 등록 API에 보내지 않습니다.\nDB에는 S3 URL이 아니라 product_images.image_key만 저장합니다.\n상품 조회/목록/검색 응답에서는 서버가 DB의 imageKey를 Presigned GET URL로 변환해서 반환합니다."
           },
           "event": [
             {

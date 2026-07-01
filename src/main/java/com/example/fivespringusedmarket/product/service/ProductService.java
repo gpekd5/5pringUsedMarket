@@ -39,7 +39,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ProductService {
 
     private static final Pattern PRODUCT_IMAGE_KEY_PATTERN =
-            Pattern.compile("^products/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\\.(jpg|jpeg|png|webp)$");
+            Pattern.compile("^products/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\\.(jpg|jpeg|png)$");
 
     private final ProductRepository productRepository;
     private final ProductImageRepository productImageRepository;
