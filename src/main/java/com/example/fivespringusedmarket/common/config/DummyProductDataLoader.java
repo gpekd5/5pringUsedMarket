@@ -30,11 +30,11 @@ import java.util.Random;
  * 다만 검색 테스트에 필요한 키워드가 유지되어야 하므로,
  * 상품명은 직접 정의한 키워드 배열과 문구 배열을 조합해 생성합니다.</p>
  *
- * <p>이 클래스는 local 프로필에서만 동작하며,
- * 이미 더미 데이터가 존재하는 경우 중복 적재를 방지합니다.</p>
+ * <p>이 클래스는 일반 local 실행에서는 동작하지 않고,
+ * 성능 테스트가 필요할 때만 bulk-dummy 프로필을 함께 활성화합니다.</p>
  */
 @Slf4j
-@Profile("local")
+@Profile("bulk-dummy")
 @Component
 @RequiredArgsConstructor
 public class DummyProductDataLoader implements ApplicationRunner {

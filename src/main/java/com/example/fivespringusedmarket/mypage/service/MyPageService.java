@@ -2,11 +2,14 @@ package com.example.fivespringusedmarket.mypage.service;
 
 import com.example.fivespringusedmarket.common.exception.CustomException;
 import com.example.fivespringusedmarket.common.exception.ErrorCode;
+import com.example.fivespringusedmarket.chat.repository.ChatMemberRepository;
+import com.example.fivespringusedmarket.coupon.repository.UserCouponRepository;
 import com.example.fivespringusedmarket.member.entity.Member;
 import com.example.fivespringusedmarket.member.repository.MemberRepository;
 import com.example.fivespringusedmarket.mypage.dto.MyPageResponse;
 import com.example.fivespringusedmarket.product.entity.ProductStatus;
 import com.example.fivespringusedmarket.product.repository.ProductRepository;
+import com.example.fivespringusedmarket.wish.repository.WishRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +23,9 @@ public class MyPageService {
 
     private final MemberRepository memberRepository;
     private final ProductRepository productRepository;
+    private final WishRepository wishRepository;
+    private final ChatMemberRepository chatMemberRepository;
+    private final UserCouponRepository userCouponRepository;
 
     /**
      * 인증된 회원의 마이페이지 요약 정보를 반환한다.
@@ -47,17 +53,14 @@ public class MyPageService {
     }
 
     private Long getWishedProductCount(Long memberId) {
-        // TODO: WishRepository가 안정화되면 관심 상품 count 쿼리로 교체한다.
-        return 0L;
+        return wishRepository.countByMemberIdAndProductStatusNot(memberId, ProductStatus.DELETED);
     }
 
     private Long getChatRoomCount(Long memberId) {
-        // TODO: ChatRepository가 안정화되면 참여 채팅방 count 쿼리로 교체한다.
-        return 0L;
+        return chatMemberRepository.countByMemberId(memberId);
     }
 
     private Long getCouponCount(Long memberId) {
-        // TODO: CouponRepository가 안정화되면 보유 쿠폰 count 쿼리로 교체한다.
-        return 0L;
+        return userCouponRepository.countByMemberId(memberId);
     }
 }

@@ -23,6 +23,10 @@ public record ProductResponse(
 ) {
 
     public static ProductResponse of(Product product, List<String> imageUrls) {
+        return of(product, imageUrls, false);
+    }
+
+    public static ProductResponse of(Product product, List<String> imageUrls, boolean wished) {
         return new ProductResponse(
                 product.getId(),
                 product.getSeller().getId(),
@@ -33,7 +37,7 @@ public record ProductResponse(
                 product.getCategory().name(),
                 product.getStatus().name(),
                 imageUrls,
-                false,
+                wished,
                 product.getCreatedAt(),
                 product.getUpdatedAt()
         );

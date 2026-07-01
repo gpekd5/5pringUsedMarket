@@ -11,6 +11,8 @@ import com.example.fivespringusedmarket.coupon.repository.CouponRepository;
 import com.example.fivespringusedmarket.coupon.repository.UserCouponRepository;
 import com.example.fivespringusedmarket.member.entity.Member;
 import com.example.fivespringusedmarket.member.repository.MemberRepository;
+import com.example.fivespringusedmarket.product.entity.ProductStatus;
+import com.example.fivespringusedmarket.product.repository.ProductRepository;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +32,7 @@ public class CouponService {
     private final CouponRepository couponRepository;
     private final UserCouponRepository userCouponRepository;
     private final MemberRepository memberRepository;
+    private final ProductRepository productRepository;
 
     @Transactional(readOnly = true)
     public Page<CouponResponse> getCoupons(Pageable pageable) {
@@ -49,6 +52,9 @@ public class CouponService {
         }
         if (coupon.isEventEnded(now)) {
             throw new CustomException(ErrorCode.COUPON_EVENT_ENDED);
+        }
+        if (productRepository.countBySellerIdAndStatusNot(memberId, ProductStatus.DELETED) == 0) {
+            throw new CustomException(ErrorCode.COUPON_ISSUE_REQUIRES_PRODUCT);
         }
         if (userCouponRepository.existsByMemberIdAndCouponId(memberId, couponId)) {
             throw new CustomException(ErrorCode.COUPON_ALREADY_ISSUED);

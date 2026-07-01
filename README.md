@@ -1257,3 +1257,36 @@ AWS_SECRET_ACCESS_KEY=your-aws-secret-access-key
 
 </details>
 
+Redis 연결 여부도 Health Check에서 확인할 수 있도록 컴포넌트 상태는 노출합니다. 정상 연결 시 응답의 `components.redis.status`가 `UP`으로 표시됩니다.
+
+## 로컬 실행 빠른 안내
+
+자세한 로컬 실행 방법은 [`LOCAL_SETUP.md`](LOCAL_SETUP.md)를 참고합니다.
+
+`src/main/resources/application-local.yml`은 개인 로컬 설정 파일이라 Git에 올라가지 않습니다. 처음 실행할 때는 템플릿을 복사해서 생성합니다.
+
+```powershell
+Copy-Item .\src\main\resources\application-local.yml.template .\src\main\resources\application-local.yml
+```
+
+실행 순서:
+
+```powershell
+docker compose up -d mysql redis
+.\gradlew.bat bootRun --args='--spring.profiles.active=local'
+```
+
+프론트엔드는 새 터미널에서 실행합니다.
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+접속 주소:
+
+```text
+Frontend: http://localhost:5173
+Backend:  http://localhost:8080
+```
