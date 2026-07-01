@@ -15,7 +15,7 @@ import tools.jackson.databind.ObjectMapper;
 @RequiredArgsConstructor
 public class ChatRedisPublisher {
 
-    private static final String CHAT_CHANNEL_PREFIX = "chat-room:";
+    private static final String CHAT_CHANNEL = "chat-room-events";
 
     private final RedisTemplate<String, String> redisTemplate;
     private final ObjectMapper objectMapper;
@@ -23,6 +23,6 @@ public class ChatRedisPublisher {
     @SneakyThrows
     public void publish(Long roomId, ChatMessageBroadcast broadcast) {
         String json = objectMapper.writeValueAsString(broadcast);
-        redisTemplate.convertAndSend(CHAT_CHANNEL_PREFIX + roomId, json);
+        redisTemplate.convertAndSend(CHAT_CHANNEL, json);
     }
 }

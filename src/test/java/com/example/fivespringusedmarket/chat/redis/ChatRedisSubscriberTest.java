@@ -8,6 +8,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.connection.Message;
+import org.springframework.data.redis.listener.ChannelTopic;
 import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import tools.jackson.databind.ObjectMapper;
@@ -33,14 +34,20 @@ class ChatRedisSubscriberTest {
     @Mock private RedisMessageListenerContainer container;
 
     @Test
-    @DisplayName("onMessage 성공 - pattern이 아닌 message.getChannel()에서 roomId를 파싱해 올바른 STOMP 경로로 전달")
-    void onMessage_success_parsesRoomIdFromChannel() throws Exception {
-        // pattern은 구독 패턴(chat-room:*)이고 실제 채널명은 message.getChannel()에 있다
-        String actualChannel = "chat-room:5";
-        String patternString = "chat-room:*"; // pattern은 항상 구독 패턴
+    @DisplayName("init 성공 - 패턴 구독 없이 단일 채널을 구독")
+    void init_success_subscribesSingleChannel() {
+        chatRedisSubscriber.init();
+
+        verify(container).addMessageListener(eq(chatRedisSubscriber), eq(new ChannelTopic("chat-room-events")));
+    }
+
+    @Test
+    @DisplayName("onMessage 성공 - 메시지 본문의 roomId로 올바른 STOMP 경로에 전달")
+    void onMessage_success_routesByRoomIdInPayload() throws Exception {
+        String channel = "chat-room-events";
 
         Message message = mock(Message.class);
-        given(message.getChannel()).willReturn(actualChannel.getBytes(StandardCharsets.UTF_8));
+        given(message.getChannel()).willReturn(channel.getBytes(StandardCharsets.UTF_8));
         given(message.getBody()).willReturn("{}".getBytes());
 
         ChatMessageBroadcast broadcast = new ChatMessageBroadcast(
@@ -48,9 +55,8 @@ class ChatRedisSubscriberTest {
         );
         given(objectMapper.readValue(any(byte[].class), eq(ChatMessageBroadcast.class))).willReturn(broadcast);
 
-        chatRedisSubscriber.onMessage(message, patternString.getBytes(StandardCharsets.UTF_8));
+        chatRedisSubscriber.onMessage(message, null);
 
-        // pattern("chat-room:*")이 아닌 실제 채널명("chat-room:5")에서 파싱한 roomId로 전달되어야 한다
         verify(messagingTemplate).convertAndSend("/sub/chat/rooms/5", broadcast);
     }
 
@@ -58,7 +64,7 @@ class ChatRedisSubscriberTest {
     @DisplayName("onMessage 성공 - 채팅방 ID별로 올바른 STOMP 경로로 분리 전달")
     void onMessage_success_routesToCorrectRoomDestination() throws Exception {
         Message message = mock(Message.class);
-        given(message.getChannel()).willReturn("chat-room:99".getBytes(StandardCharsets.UTF_8));
+        given(message.getChannel()).willReturn("chat-room-events".getBytes(StandardCharsets.UTF_8));
         given(message.getBody()).willReturn("{}".getBytes());
 
         ChatMessageBroadcast broadcast = new ChatMessageBroadcast(
@@ -66,7 +72,7 @@ class ChatRedisSubscriberTest {
         );
         given(objectMapper.readValue(any(byte[].class), eq(ChatMessageBroadcast.class))).willReturn(broadcast);
 
-        chatRedisSubscriber.onMessage(message, "chat-room:*".getBytes(StandardCharsets.UTF_8));
+        chatRedisSubscriber.onMessage(message, null);
 
         verify(messagingTemplate).convertAndSend("/sub/chat/rooms/99", broadcast);
     }
@@ -75,12 +81,12 @@ class ChatRedisSubscriberTest {
     @DisplayName("onMessage 실패 - 역직렬화 예외 발생 시 STOMP 전달하지 않음")
     void onMessage_deserializationFails_doesNotBroadcast() throws Exception {
         Message message = mock(Message.class);
-        given(message.getChannel()).willReturn("chat-room:5".getBytes(StandardCharsets.UTF_8));
+        given(message.getChannel()).willReturn("chat-room-events".getBytes(StandardCharsets.UTF_8));
         given(message.getBody()).willReturn("invalid-json".getBytes());
         given(objectMapper.readValue(any(byte[].class), eq(ChatMessageBroadcast.class)))
                 .willThrow(new RuntimeException("역직렬화 실패"));
 
-        chatRedisSubscriber.onMessage(message, "chat-room:*".getBytes(StandardCharsets.UTF_8));
+        chatRedisSubscriber.onMessage(message, null);
 
         verify(messagingTemplate, org.mockito.Mockito.never())
                 .convertAndSend(any(String.class), any(Object.class));
