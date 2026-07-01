@@ -9,4 +9,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
  * 중복 발급 검사 및 사용/미사용 필터 조회는 UserCouponRepositoryCustom(QueryDSL)으로 처리한다.
  */
 public interface UserCouponRepository extends JpaRepository<UserCoupon, Long>, UserCouponRepositoryCustom {
+
+    long countByMemberId(Long memberId);
 }
