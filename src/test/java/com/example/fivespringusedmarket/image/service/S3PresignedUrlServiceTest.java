@@ -31,7 +31,6 @@ class S3PresignedUrlServiceTest {
     void setUp() {
         s3Presigner = Mockito.mock(S3Presigner.class);
         S3Properties s3Properties = new S3Properties();
-        s3Properties.setDirectory("products");
         s3Properties.setMaxFileSize(1024L);
         service = new S3PresignedUrlService(s3Presigner, s3Properties, "test-bucket");
     }
@@ -59,10 +58,30 @@ class S3PresignedUrlServiceTest {
         assertThat(presignRequest.putObjectRequest().bucket()).isEqualTo("test-bucket");
         assertThat(presignRequest.putObjectRequest().key()).startsWith("products/");
         assertThat(presignRequest.putObjectRequest().key()).endsWith(".png");
+        assertThat(presignRequest.putObjectRequest().key())
+                .matches("^products/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\\.png$");
         assertThat(presignRequest.putObjectRequest().contentType()).isEqualTo("image/png");
         assertThat(presignRequest.putObjectRequest().contentLength()).isEqualTo(512L);
         assertThat(response.imageKey()).isEqualTo(presignRequest.putObjectRequest().key());
         assertThat(response.uploadUrl()).contains("X-Amz-Signature=put-test");
+    }
+
+    @Test
+    void createUploadPresignedUrlCreatesImageKeyAcceptedByProductImageKeyPolicy() throws Exception {
+        // given
+        PresignedPutObjectRequest presignedRequest = Mockito.mock(PresignedPutObjectRequest.class);
+        PresignedUploadUrlRequest request = new PresignedUploadUrlRequest("sample.png", "image/png", 512L);
+
+        when(s3Presigner.presignPutObject(Mockito.any(PutObjectPresignRequest.class)))
+                .thenReturn(presignedRequest);
+        when(presignedRequest.url())
+                .thenReturn(URI.create("https://test-bucket.s3.ap-northeast-2.amazonaws.com/products/sample.png?X-Amz-Signature=put-test").toURL());
+
+        // when
+        PresignedUploadUrlResponse response = service.createUploadPresignedUrl(request);
+
+        // then
+        assertThat(ImageKeyPolicy.isValidProductImageKey(response.imageKey())).isTrue();
     }
 
     @Test

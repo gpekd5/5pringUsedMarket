@@ -8,7 +8,6 @@ import com.example.fivespringusedmarket.image.dto.PresignedUploadUrlResponse;
 import java.time.Duration;
 import java.util.Locale;
 import java.util.Set;
-import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -46,7 +45,7 @@ public class S3PresignedUrlService {
         validateUploadRequest(request);
 
         String extension = extractExtension(request.fileName());
-        String imageKey = createObjectKey(extension);
+        String imageKey = ImageKeyPolicy.createProductImageKey(extension);
         String contentType = request.contentType().toLowerCase(Locale.ROOT);
 
         PutObjectRequest putObjectRequest = PutObjectRequest.builder()
@@ -136,22 +135,4 @@ public class S3PresignedUrlService {
         return filename.substring(extensionIndex + 1).toLowerCase(Locale.ROOT);
     }
 
-    private String createObjectKey(String extension) {
-        String directory = normalizeDirectory(s3Properties.getDirectory());
-        String filename = UUID.randomUUID() + "." + extension;
-
-        if (directory.isBlank()) {
-            return filename;
-        }
-
-        return directory + "/" + filename;
-    }
-
-    private String normalizeDirectory(String directory) {
-        if (directory == null) {
-            return "";
-        }
-
-        return directory.replaceAll("^/+", "").replaceAll("/+$", "");
-    }
 }

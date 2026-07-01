@@ -2,6 +2,7 @@ package com.example.fivespringusedmarket.product.service;
 
 import com.example.fivespringusedmarket.common.exception.CustomException;
 import com.example.fivespringusedmarket.common.exception.ErrorCode;
+import com.example.fivespringusedmarket.image.service.ImageKeyPolicy;
 import com.example.fivespringusedmarket.image.service.S3PresignedUrlService;
 import com.example.fivespringusedmarket.member.entity.Member;
 import com.example.fivespringusedmarket.member.repository.MemberRepository;
@@ -21,7 +22,6 @@ import com.example.fivespringusedmarket.wish.repository.WishRepository;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
@@ -37,9 +37,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class ProductService {
-
-    private static final Pattern PRODUCT_IMAGE_KEY_PATTERN =
-            Pattern.compile("^products/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\\.(jpg|jpeg|png)$");
 
     private final ProductRepository productRepository;
     private final ProductImageRepository productImageRepository;
@@ -331,7 +328,7 @@ public class ProductService {
 
         for (String imageKey : imageKeys) {
             if (imageKey == null || imageKey.isBlank() || imageKey.contains("://")
-                    || !PRODUCT_IMAGE_KEY_PATTERN.matcher(imageKey).matches()) {
+                    || !ImageKeyPolicy.isValidProductImageKey(imageKey)) {
                 throw new CustomException(ErrorCode.INVALID_IMAGE_KEY);
             }
         }

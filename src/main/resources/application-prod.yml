@@ -26,7 +26,6 @@ spring:
 
 aws:
   s3:
-    directory: ${AWS_S3_DIRECTORY:products}
     max-file-size: ${AWS_S3_MAX_FILE_SIZE:5242880}
 
 jwt:

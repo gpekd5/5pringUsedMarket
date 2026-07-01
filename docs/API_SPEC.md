@@ -398,7 +398,7 @@ COMPLETED
 - 클라이언트 또는 Postman은 응답의 `uploadUrl`로 S3에 직접 `PUT` 업로드한다.
 - 업로드 URL 발급 응답은 Public S3 URL이 아니라 `imageKey`와 임시 `uploadUrl`만 반환한다.
 - 현재 서버가 생성하는 `imageKey` 형식은 `products/{uuid}.{jpg|jpeg|png}`이다.
-- `products` 디렉터리는 `AWS_S3_DIRECTORY` 기본값 기준이며, 현재 상품 API의 imageKey 검증도 이 형식을 기준으로 한다.
+- 상품 이미지 Object Key prefix는 설정으로 변경하지 않고 `products/`로 고정한다.
 - 상품 조회 응답의 이미지 URL은 서버가 생성한 10분 만료 Presigned URL을 사용한다.
 - DB에는 Presigned URL을 저장하지 않고 `imageKey`만 저장한다.
 - S3 직접 PUT 요청에는 백엔드 JWT Authorization 헤더를 넣지 않는다.

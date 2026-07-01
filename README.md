@@ -25,7 +25,6 @@ REDIS_HOST=localhost
 REDIS_PORT=6379
 AWS_REGION=ap-northeast-2
 AWS_S3_BUCKET=your-s3-bucket-name
-AWS_S3_DIRECTORY=products
 AWS_S3_MAX_FILE_SIZE=5242880
 AWS_ACCESS_KEY_ID=your-aws-access-key-id
 AWS_SECRET_ACCESS_KEY=your-aws-secret-access-key
@@ -62,7 +61,7 @@ S3 이미지 업로드는 Presigned PUT URL 기반 직접 업로드 방식입니
 
 현재 S3 업로드 URL 발급 로직은 Spring Cloud AWS가 자동 설정한 AWS SDK v2 `S3Presigner`를 주입받아 사용하는 방식입니다. 별도의 수동 Credentials Bean을 만들지 않으며, Spring Cloud AWS `S3Template`과 혼용하지 않습니다.
 
-Spring Cloud AWS가 사용하는 자격 증명, 리전, 버킷 설정은 `spring.cloud.aws` prefix에 두고, 업로드 디렉터리와 파일 크기 제한 같은 프로젝트 정책값은 `aws.s3` prefix에 둡니다.
+Spring Cloud AWS가 사용하는 자격 증명, 리전, 버킷 설정은 `spring.cloud.aws` prefix에 두고, 파일 크기 제한 같은 프로젝트 정책값은 `aws.s3` prefix에 둡니다. 상품 이미지 Object Key prefix는 설정값이 아니라 `products/`로 고정합니다.
 
 S3 관련 환경변수는 다음과 같습니다.
 
@@ -70,7 +69,6 @@ S3 관련 환경변수는 다음과 같습니다.
 |---|---|---|
 | `AWS_REGION` | `spring.cloud.aws.region.static` | S3 리전, 기본값 `ap-northeast-2` |
 | `AWS_S3_BUCKET` | `spring.cloud.aws.s3.bucket` | Private S3 Bucket 이름 |
-| `AWS_S3_DIRECTORY` | `aws.s3.directory` | 상품 이미지 Object Key prefix, 기본값 `products` |
 | `AWS_S3_MAX_FILE_SIZE` | `aws.s3.max-file-size` | Presigned 업로드 URL 발급 시 허용하는 이미지 최대 크기, 기본값 `5242880` |
 | `AWS_ACCESS_KEY_ID` | AWS SDK 기본 자격 증명 체인 | 로컬 개발용 AWS Access Key |
 | `AWS_SECRET_ACCESS_KEY` | AWS SDK 기본 자격 증명 체인 | 로컬 개발용 AWS Secret Key |
@@ -134,7 +132,6 @@ implementation 'io.awspring.cloud:spring-cloud-aws-starter-parameter-store'
 | `/used-market/prod/REDIS_PORT` | `spring.data.redis.port` | String | N |
 | `/used-market/prod/AWS_S3_BUCKET` | `spring.cloud.aws.s3.bucket` | String | Y |
 | `/used-market/prod/AWS_REGION` | `spring.cloud.aws.region.static` | String | N |
-| `/used-market/prod/AWS_S3_DIRECTORY` | `aws.s3.directory` | String | N |
 | `/used-market/prod/AWS_S3_MAX_FILE_SIZE` | `aws.s3.max-file-size` | String | N |
 
 현재 단계에서는 빠른 개발과 디버깅을 위해 Spring Boot 컨테이너를 Compose에 포함하지 않습니다. 이후 GitHub Actions나 EC2 배포 단계에서 애플리케이션 컨테이너가 필요해지면 별도 Compose 파일 또는 배포용 프로파일로 확장하는 구조가 적절합니다.
