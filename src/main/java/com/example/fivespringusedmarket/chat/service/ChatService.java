@@ -64,7 +64,7 @@ public class ChatService {
         }
 
         // 신규 채팅방 및 참여자(두 명 모두 MEMBER) 동시 생성 — 하나의 트랜잭션 안에서 처리한다.
-        ChatRoom room = chatRoomRepository.save(ChatRoom.createTradeRoom(product));
+        ChatRoom room = chatRoomRepository.save(ChatRoom.createTradeRoom(product, buyerId));
         chatMemberRepository.save(ChatMember.create(room, buyer, ChatMemberRole.MEMBER));
         chatMemberRepository.save(ChatMember.create(room, seller, ChatMemberRole.MEMBER));
 
