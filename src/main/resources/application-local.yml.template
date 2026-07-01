@@ -1,0 +1,59 @@
+# 로컬 실행 시 이 파일을 참고해 application-local.yml을 구성합니다.
+# 실제 DB 접속 정보, JWT Secret, 토큰 만료 시간은 공통 application.yaml에 두지 않고
+# local 프로필 기본값 또는 환경변수로 주입합니다.
+#
+# 실행 예시:
+# SPRING_PROFILES_ACTIVE=local
+# DB_URL=jdbc:mysql://localhost:3307/fivespring_used_market
+# DB_USERNAME=root
+# DB_PASSWORD=12345678
+# JWT_SECRET=your-local-jwt-secret-at-least-32-characters
+# JWT_ACCESS_TOKEN_EXPIRATION=1800000
+# JWT_REFRESH_TOKEN_EXPIRATION=1209600000
+# REDIS_HOST=localhost
+# REDIS_PORT=6379
+# AWS_REGION=ap-northeast-2
+# AWS_S3_BUCKET=your-s3-bucket-name
+# AWS_S3_MAX_FILE_SIZE=5242880
+# AWS_ACCESS_KEY_ID=your-aws-access-key-id
+# AWS_SECRET_ACCESS_KEY=your-aws-secret-access-key
+
+spring:
+  config:
+    activate:
+      on-profile: local
+
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3307/fivespring_used_market}?rewriteBatchedStatements=true
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:12345678}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+  cloud:
+    aws:
+      region:
+        static: ${AWS_REGION:ap-northeast-2}
+      s3:
+        bucket: ${AWS_S3_BUCKET:local-used-market-images}
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+jwt:
+  secret: ${JWT_SECRET:your-local-jwt-secret-at-least-32-characters}
+  access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:1800000}
+  refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION:1209600000}
+
+aws:
+  s3:
+    max-file-size: ${AWS_S3_MAX_FILE_SIZE:5242880}
