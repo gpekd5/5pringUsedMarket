@@ -31,4 +31,9 @@ public record ChatMessageBroadcast(
                 message.getCreatedAt()
         );
     }
+
+    // 읽음 이벤트 — 상대방 화면의 안읽음 수 실시간 제거용
+    public static ChatMessageBroadcast readEvent(Long roomId, Long memberId) {
+        return new ChatMessageBroadcast(null, roomId, "READ", memberId, null, null, LocalDateTime.now());
+    }
 }

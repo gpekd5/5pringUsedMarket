@@ -8,6 +8,7 @@ import com.example.fivespringusedmarket.chat.entity.ChatMessage;
 import com.example.fivespringusedmarket.chat.entity.ChatMember;
 import com.example.fivespringusedmarket.chat.entity.ChatMemberRole;
 import com.example.fivespringusedmarket.chat.entity.ChatRoom;
+import com.example.fivespringusedmarket.chat.redis.ChatRedisPublisher;
 import com.example.fivespringusedmarket.chat.repository.ChatMemberRepository;
 import com.example.fivespringusedmarket.chat.repository.ChatMessageRepository;
 import com.example.fivespringusedmarket.chat.repository.ChatRoomRepository;
@@ -36,6 +37,7 @@ public class ChatService {
     private final ChatMemberRepository chatMemberRepository;
     private final ChatMessageRepository chatMessageRepository;
     private final ChatRoomCommonMethod chatRoomCommonMethod;
+    private final ChatRedisPublisher chatRedisPublisher;
 
     @Transactional
     public TradeChatRoomCreateResponse findOrCreateTradeRoom(Long buyerId, TradeChatRoomCreateRequest request) {
@@ -174,6 +176,7 @@ public class ChatService {
                 .ifPresent(latestMessage -> {
                     chatMember.updateLastReadMessageId(latestMessage.getId());
                     chatMember.resetUnreadCount();
+                    chatRedisPublisher.publish(roomId, ChatMessageBroadcast.readEvent(roomId, memberId));
                 });
     }
 }
