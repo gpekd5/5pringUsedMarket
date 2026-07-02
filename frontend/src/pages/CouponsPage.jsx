@@ -107,7 +107,7 @@ export default function CouponsPage() {
     try {
       const myCouponPage = await getMyCoupons({ page: 0, size: 100 });
       setMyCoupons(myCouponPage.content);
-      setIssuedCouponIds(new Set(myCouponPage.content.map((coupon) => String(coupon.couponId))));
+      setIssuedCouponIds(new Set(myCouponPage.content.map((coupon) => coupon.couponId).filter(Boolean).map(String)));
     } catch {
       setMyCoupons([]);
       setIssuedCouponIds(new Set());
@@ -204,9 +204,10 @@ export default function CouponsPage() {
       const usedAt = new Date().toISOString();
       setMyCoupons((prevCoupons) =>
         prevCoupons.map((prevCoupon) =>
-          prevCoupon.userCouponId === coupon.userCouponId ? { ...prevCoupon, usedAt } : prevCoupon,
+          prevCoupon.userCouponId === coupon.userCouponId ? { ...prevCoupon, used: true, usedAt } : prevCoupon,
         ),
       );
+      await loadIssuedCoupons();
       setMessage({
         type: 'success',
         text: `${coupon.couponName} 쿠폰이 사용 처리되었습니다.`,
@@ -395,7 +396,7 @@ export default function CouponsPage() {
         ) : myCoupons.length > 0 ? (
           <div className="grid gap-3 md:grid-cols-2">
             {myCoupons.map((coupon) => {
-              const isUsed = Boolean(coupon.usedAt);
+              const isUsed = Boolean(coupon.used);
               const isUsing = usingCouponId === coupon.userCouponId;
 
               return (
