@@ -68,7 +68,8 @@ function isPublicReadRequest(config = {}) {
 
   return (
     method === 'get' &&
-    (url.startsWith('/api/v3/products/search') ||
+    (url === '/api/products' ||
+      url.startsWith('/api/v3/products/search') ||
       url.startsWith('/api/search/popular') ||
       /^\/api\/products\/\d+$/.test(url))
   );

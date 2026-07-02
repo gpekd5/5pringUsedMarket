@@ -134,11 +134,11 @@ export default function ProductCreatePage() {
           <label className="flex min-h-56 cursor-pointer flex-col items-center justify-center rounded-[24px] border border-dashed border-[var(--color-border-strong)] bg-slate-50 px-4 py-8 text-center transition hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-soft)]">
             <ImagePlus size={34} className="text-[var(--color-primary)]" />
             <span className="mt-3 text-sm font-black text-[var(--color-text-main)]">이미지 선택</span>
-            <span className="mt-1 text-xs font-bold text-[var(--color-text-sub)]">jpg, jpeg, png, webp</span>
+            <span className="mt-1 text-xs font-bold text-[var(--color-text-sub)]">jpg, jpeg, png</span>
             <input
               className="hidden"
               type="file"
-              accept="image/jpeg,image/png,image/webp"
+              accept="image/jpeg,image/png"
               multiple
               onChange={handleImageChange}
             />

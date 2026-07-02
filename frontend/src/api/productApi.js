@@ -1,8 +1,8 @@
-import axios from 'axios';
 import apiClient from './apiClient.js';
 
 const ALLOWED_IMAGE_CONTENT_TYPES = new Set(['image/jpeg', 'image/png']);
 const ALLOWED_IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png']);
+const DEV_S3_UPLOAD_PROXY_PATH = '/__s3-upload';
 
 function unwrapApiResponse(response) {
   return response.data?.data ?? response.data;
@@ -30,13 +30,12 @@ export function getProductApiErrorMessage(error, fallbackMessage = '상품 정�
   return error?.response?.data?.message || error?.message || fallbackMessage;
 }
 
-export async function searchProducts({ keyword, category, status, sort = 'LATEST', page = 0, size = 12 } = {}) {
-  const response = await apiClient.get('/api/v3/products/search', {
+export async function searchProducts({ keyword, category, status, page = 0, size = 12 } = {}) {
+  const response = await apiClient.get('/api/products', {
     params: cleanParams({
       keyword,
       category,
       status,
-      sort,
       page,
       size,
     }),
@@ -53,26 +52,51 @@ export async function getProduct(productId) {
 
 export async function uploadProductImage(file) {
   validateProductImageFile(file);
+  const contentType = file.type.toLowerCase();
 
   const presignedResponse = await apiClient.post('/api/images/presigned-url', {
     fileName: file.name,
-    contentType: file.type,
+    contentType,
     fileSize: file.size,
   });
   const { imageKey, uploadUrl } = unwrapApiResponse(presignedResponse);
 
-  await axios.put(uploadUrl, file, {
-    headers: {
-      'Content-Type': file.type,
-    },
-  });
+  await uploadToPresignedUrl(uploadUrl, file, contentType);
 
   return { imageKey };
+}
+
+async function uploadToPresignedUrl(uploadUrl, file, contentType) {
+  const targetUrl = import.meta.env.DEV
+    ? `${DEV_S3_UPLOAD_PROXY_PATH}?target=${encodeURIComponent(uploadUrl)}`
+    : uploadUrl;
+
+  let response;
+
+  try {
+    response = await fetch(targetUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': contentType,
+      },
+      body: file,
+    });
+  } catch {
+    throw new Error('이미지 업로드 요청이 네트워크에서 차단되었습니다. S3 CORS 설정을 확인해주세요.');
+  }
+
+  if (!response.ok) {
+    throw new Error(`이미지 업로드에 실패했습니다. (${response.status})`);
+  }
 }
 
 function validateProductImageFile(file) {
   if (!file) {
     throw new Error('이미지 파일을 선택해주세요.');
+  }
+
+  if (file.size <= 0) {
+    throw new Error('빈 이미지 파일은 업로드할 수 없습니다.');
   }
 
   const contentType = file.type?.toLowerCase();
