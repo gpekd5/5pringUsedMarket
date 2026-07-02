@@ -22,6 +22,21 @@ export function normalizeCouponPage(pageData = {}) {
   };
 }
 
+function normalizeBoolean(value) {
+  return value === true || value === 1 || value === '1' || value === 'true';
+}
+
+function normalizeUserCoupon(coupon = {}) {
+  const used = normalizeBoolean(coupon.used) || Boolean(coupon.usedAt);
+
+  return {
+    ...coupon,
+    userCouponId: coupon.userCouponId ?? coupon.id,
+    used,
+    usedAt: coupon.usedAt ?? null,
+  };
+}
+
 export function getCouponApiErrorMessage(error, fallbackMessage = '쿠폰 정보를 불러오지 못했습니다.') {
   return error?.response?.data?.message || error?.message || fallbackMessage;
 }
@@ -45,7 +60,12 @@ export async function getMyCoupons({ used, page = 0, size = 100 } = {}) {
     params: cleanParams({ used, page, size }),
   });
 
-  return normalizeCouponPage(unwrapApiResponse(response));
+  const couponPage = normalizeCouponPage(unwrapApiResponse(response));
+
+  return {
+    ...couponPage,
+    content: couponPage.content.map(normalizeUserCoupon),
+  };
 }
 
 export async function useCoupon(userCouponId) {

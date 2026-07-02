@@ -244,6 +244,29 @@ Internet Gateway
 
 EC2, RDS, ElastiCache를 같은 VPC 내에 배치하여 퍼블릭 인터넷을 거치지 않고 내부 네트워크로 통신합니다.
 
+### 운영 환경 연결 구조
+
+현재 프론트엔드는 별도 호스팅하지 않고, 로컬 Vite 개발 서버에서 운영 백엔드 API를 바라보는 방식으로 화면을 검증합니다.
+
+```text
+Local Browser
+      ↓
+Local Vite Frontend (:5173)
+      │  VITE_API_BASE_URL=http://3.38.97.64:8080
+      ↓
+AWS EC2 Spring Boot (:8080, prod profile)
+      ├─ AWS Parameter Store (/used-market/prod/*)
+      ├─ RDS MySQL (상품, 회원, 쿠폰, 채팅 데이터)
+      ├─ ElastiCache Redis (JWT 블랙리스트, 검색 캐시, 분산 락, Pub/Sub)
+      ├─ Private S3 Bucket (상품 이미지, Presigned URL)
+      └─ CloudWatch Logs (/used-market/prod/app)
+```
+
+- 프론트엔드는 DB, Redis, S3에 직접 연결하지 않고 **운영 백엔드 API만 호출**합니다.
+- 운영 백엔드는 `application-prod.yml`과 AWS Parameter Store 값을 통해 RDS, ElastiCache Redis, S3에 연결합니다.
+- 로컬에서 운영 백엔드로 화면을 테스트할 때만 `frontend/.env`에 `VITE_API_BASE_URL`을 설정합니다.
+- `frontend/.env`는 개인 로컬 환경 파일이므로 커밋하지 않습니다. 공유가 필요한 값은 `.env.example` 또는 README에 문서화합니다.
+
 ### 로그 관리 — CloudWatch Logs
 
 컨테이너 로그를 AWS CloudWatch Logs(`/used-market/prod/app`)에 전송합니다. EC2에 직접 SSH 접속하지 않고도 운영 로그를 확인할 수 있습니다.
@@ -1289,3 +1312,13 @@ npm run dev
 Frontend: http://localhost:5173
 Backend:  http://localhost:8080
 ```
+
+운영 백엔드에 연결해서 프론트 화면을 확인할 때는 `frontend/.env`에 운영 API 주소를 설정합니다.
+
+```env
+VITE_API_BASE_URL=http://3.38.97.64:8080
+```
+
+이 경우 프론트 화면은 로컬에서 실행되지만, API 요청은 AWS EC2의 운영 백엔드로 전달됩니다. 운영 백엔드는 Parameter Store 설정을 통해 RDS, ElastiCache Redis, S3에 연결합니다.
+
+`frontend/.env`는 개인 로컬 환경 파일이므로 커밋하지 않습니다.
